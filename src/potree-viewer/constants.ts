@@ -88,7 +88,7 @@ export const getScriptPaths = (basePath: string = DEFAULT_BASE_PATH): readonly s
 
 export const getStylesheetPaths = (basePath: string = DEFAULT_BASE_PATH): readonly string[] => [
   `${basePath}/build/potree/potree.css`,
-  `${basePath}/lib/jquery-ui/jquery-ui.min.css`,
+  `${basePath}/lib/jquery-ui/jquery-ui.css`,
   `${basePath}/lib/spectrum/spectrum.css`,
   `${basePath}/lib/jstree/themes/mixed/style.css`,
 ] as const;
