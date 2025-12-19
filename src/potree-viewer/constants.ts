@@ -76,7 +76,7 @@ export const getScriptPaths = (basePath: string = DEFAULT_BASE_PATH): readonly s
   `${basePath}/lib/jquery-ui/jquery-ui.min.js`,
 
   // Three.js (if not bundled in potree.js)
-  // `${basePath}/lib/three.js/three.js`,
+  `${basePath}/lib/three.js/build/three.js`,
 
   // Main Potree library - Must be last
   `${basePath}/build/potree/potree.js`,
@@ -156,3 +156,4 @@ export const CONTROL_TYPE_MAP = {
   orbit: 'orbitControls',
   firstPerson: 'fpControls',
 } as const;
+
