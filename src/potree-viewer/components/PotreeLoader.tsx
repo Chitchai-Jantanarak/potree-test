@@ -27,10 +27,10 @@ const loadScript = (src: string): Promise<void> =>
     if (document.querySelector(`script[src="${src}"]`)) return resolve();
     const el = document.createElement('script');
     el.src = src;
-    el.async = false;
+    el.async = true;
     el.onload = () => resolve();
     el.onerror = () => reject(new Error(`Failed: ${src}`));
-    document.head.appendChild(el);
+    document.body.appendChild(el);
   });
 
 const loadStyle = (href: string): Promise<void> =>
@@ -69,20 +69,34 @@ export function PotreeLoader({ basePath = DEFAULT_BASE_PATH, includeCesium = fal
         if (includeCesium) styles.push(getCesiumStylesheetPath(basePath));
         await Promise.all(styles.map(loadStyle));
 
-        // Load Cesium first if needed
+        // Get script list and insert Cesium before potree.js if needed
+        const scripts = getScriptPaths(basePath);
         if (includeCesium) {
-          await loadScript(getCesiumScriptPath(basePath));
-          window.Cesium?.buildModuleUrl.setBaseUrl(getCesiumBasePath(basePath) + '/');
+          // Insert Cesium before potree.js (which is the last script)
+          const cesiumScript = getCesiumScriptPath(basePath);
+          scripts.splice(scripts.length - 1, 0, cesiumScript);
         }
 
-        // Load Potree scripts sequentially
-        for (const src of getScriptPaths(basePath)) {
+        // Load scripts sequentially (order matters)
+        for (const src of scripts) {
           if (cancelled) return;
           await loadScript(src);
         }
 
+        // Set Cesium base URL after loading
+        if (includeCesium && window.Cesium) {
+          window.Cesium.buildModuleUrl.setBaseUrl(getCesiumBasePath(basePath) + '/');
+        }
+
         if (!window.Potree) throw new Error('Potree not loaded');
         if (includeCesium && !window.Cesium) throw new Error('Cesium not loaded');
+
+        // CRITICAL: Set Potree paths for resources, workers, and sidebar
+        // Must be absolute URLs because Potree uses `new URL(path)` which requires absolute URLs
+        const origin = window.location.origin;
+        const potreeBuildPath = `${origin}${basePath}/build/potree`;
+        window.Potree.scriptPath = potreeBuildPath;
+        window.Potree.resourcePath = `${potreeBuildPath}/resources`;
 
         if (!cancelled) {
           setScriptsLoaded(true);

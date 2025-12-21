@@ -89,6 +89,10 @@ declare namespace TWEEN {
 
 // Potree
 declare namespace Potree {
+  // Path configuration - MUST be set before using Potree
+  let scriptPath: string;
+  let resourcePath: string;
+
   // Enums
   enum PointSizeType {
     FIXED = 0,
@@ -130,7 +134,7 @@ declare namespace Potree {
     setDescription(desc: string): void;
 
     loadSettingsFromURL(): void;
-    loadGUI(callback?: () => void, selector?: string): void;
+    loadGUI(callback?: () => void, sidebarSelector?: string): void;
     toggleSidebar(): void;
     fitToScreen(duration?: number): void;
     render(): void;

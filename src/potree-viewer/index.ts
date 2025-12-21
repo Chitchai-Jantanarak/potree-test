@@ -36,6 +36,19 @@ export {
   type LocationName,
 } from './constants';
 
+// Centralized Config
+export {
+  BASE_PATH,
+  DEFAULT_VIEWER_CONFIG,
+  DEFAULT_CESIUM_CONFIG,
+  CONTAINER_IDS,
+  Z_INDEX,
+  PRESETS,
+  mergeViewerConfig,
+  mergeCesiumConfig,
+  isCesiumEnabled,
+} from './potree.config';
+
 // Types
 export type {
   PotreeViewerConfig,

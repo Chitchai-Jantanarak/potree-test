@@ -195,28 +195,28 @@ export function CesiumPotreeViewer({
     };
   }, [scriptsLoaded, basePath, mapProvider, initialPosition, config, pointClouds, onReady, onError, setViewer]);
 
-  // const containerStyle: CSSProperties = {
-  //   position: 'relative',
-  //   width: '100%',
-  //   height: '100%',
-  //   ...style,
-  // };
+  const containerStyle: CSSProperties = {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    ...style,
+  };
 
-  // const layerStyle: CSSProperties = {
-  //   position: 'absolute',
-  //   top: 0,
-  //   left: 0,
-  //   right: 0,
-  //   bottom: 0,
-  // };
+  const layerStyle: CSSProperties = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  };
 
   return (
     <PotreeLoader basePath={basePath} includeCesium>
-      <div ref={containerRef} className={className} >
+      <div ref={containerRef} className={className} style={containerStyle}>
         {/* Cesium layer (bottom) */}
-        <div id={idsRef.current.cesium} />
+        <div id={idsRef.current.cesium} style={{ ...layerStyle, zIndex: 0 }} />
         {/* Potree layer (top, transparent background) */}
-        <div id={idsRef.current.potree} />
+        <div id={idsRef.current.potree} style={{ ...layerStyle, zIndex: 1 }} />
       </div>
     </PotreeLoader>
   );

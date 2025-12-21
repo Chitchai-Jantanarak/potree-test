@@ -3,10 +3,11 @@
 /**
  * PotreeViewer - Main wrapper component
  *
- * Structure:
- * - Cesium (z-index: 0) - 3D globe behind everything
- * - Potree RenderArea (z-index: 1) - point cloud on top
- * - Sidebar (fixed left) - UI controls
+ * Structure (matching reference implementation):
+ * - potree_container (outer wrapper with className)
+ *   - potree_render_area_class (Potree canvas)
+ *     - cesium_container (Cesium canvas - INSIDE render area)
+ *   - potree_sidebar_container (sidebar - sibling to render area)
  */
 
 import { PotreeProvider } from '../store';
@@ -15,14 +16,15 @@ import { RenderArea } from './RenderArea';
 import { CesiumCanvas } from './CesiumCanvas';
 import { InitialHook } from './InitialHook';
 import { UpdateHook } from './UpdateHook';
+import { BASE_PATH, CONTAINER_IDS, isCesiumEnabled, mergeViewerConfig } from '../potree.config';
 import type { PotreeViewerProps } from '../types';
 import '../styles/potree-viewer.css';
 
 export default function PotreeViewer(props: PotreeViewerProps) {
   const {
     url,
-    containerId = 'potree_render_area',
-    config = {},
+    containerId = CONTAINER_IDS.default,
+    config: userConfig,
     cesium,
     pointClouds = [],
     sidebar = false,
@@ -36,7 +38,15 @@ export default function PotreeViewer(props: PotreeViewerProps) {
     onError,
   } = props;
 
-  const hasCesium = cesium?.enabled !== false && cesium !== undefined;
+  // Use centralized config with user overrides
+  const config = mergeViewerConfig(userConfig);
+  const hasCesium = isCesiumEnabled(cesium);
+
+  // Build container class names
+  const containerClasses = [
+    hasCesium ? 'has-cesium' : '',
+    className || '',
+  ].filter(Boolean).join(' ');
 
   return (
     <PotreeProvider
@@ -46,12 +56,13 @@ export default function PotreeViewer(props: PotreeViewerProps) {
       offsetZ={cesium?.offsetZ}
     >
       <PotreeLoader
-        basePath="/potree-static"
+        basePath={BASE_PATH}
         includeCesium={hasCesium}
         onError={onError}
       >
+        {/* Outer container for positioning */}
         <div
-          className={`potree_container ${className || ''}`}
+          className={containerClasses}
           style={{
             position: 'absolute',
             left: 0,
@@ -61,32 +72,10 @@ export default function PotreeViewer(props: PotreeViewerProps) {
             ...style,
           }}
         >
-          {/* Cesium container - behind Potree */}
-          {hasCesium && (
-            <div
-              id={`cesium_container_${containerId}`}
-              className="cesium-container"
-              style={{
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                zIndex: 0,
-              }}
-            />
-          )}
-
-          {/* Potree render area - on top of Cesium */}
-          <RenderArea hasCesium={hasCesium}>
+          {/* RenderArea now handles Cesium container and sidebar container */}
+          <RenderArea hasCesium={hasCesium} sidebar={sidebar}>
             {renderAreaChildren}
           </RenderArea>
-
-          {/* Sidebar container */}
-          {sidebar && (
-            <div
-              id={`potree_sidebar_container_${containerId}`}
-              className="potree_sidebar_container"
-            />
-          )}
 
           {/* Hooks - these don't render anything, just side effects */}
           <InitialHook config={config} sidebar={sidebar} hasCesium={hasCesium} onReady={onReady} />

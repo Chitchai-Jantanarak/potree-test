@@ -5,9 +5,10 @@
  * Uses the container created by parent (cesium_container_{containerId})
  */
 
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import { usePotreeStore } from '../store';
-import { getCesiumBasePath, MAP_PROVIDERS } from '../constants';
+import { getCesiumBasePath } from '../constants';
+import { BASE_PATH, CONTAINER_IDS, DEFAULT_CESIUM_CONFIG } from '../potree.config';
 import type { CesiumConfig } from '../types';
 
 interface Props {
@@ -47,10 +48,11 @@ function createProjection(zone: '47' | '48') {
   };
 }
 
-export function CesiumCanvas({ basePath = '/potree-static', config = {} }: Props) {
+export function CesiumCanvas({ basePath = BASE_PATH, config = {} }: Props) {
   const cesiumRef = useRef<Cesium.Viewer | null>(null);
   const animationRef = useRef<number | null>(null);
   const initializedRef = useRef(false);
+  const [containerReady, setContainerReady] = useState(false);
 
   const viewer = usePotreeStore((s) => s.viewer);
   const scriptsLoaded = usePotreeStore((s) => s.scriptsLoaded);
@@ -59,14 +61,35 @@ export function CesiumCanvas({ basePath = '/potree-static', config = {} }: Props
   const offsetZ = usePotreeStore((s) => s.offsetZ);
   const setCesiumViewer = usePotreeStore((s) => s.setCesiumViewer);
 
-  const cesiumContainerId = `cesium_container_${containerId}`;
+  // Use centralized container ID function
+  const cesiumContainerId = CONTAINER_IDS.getCesiumId(containerId);
+
+  // Wait for container to be available in DOM
+  useEffect(() => {
+    if (containerReady) return;
+
+    const checkContainer = () => {
+      const container = document.getElementById(cesiumContainerId);
+      if (container) {
+        setContainerReady(true);
+      } else {
+        // Retry on next frame
+        requestAnimationFrame(checkContainer);
+      }
+    };
+
+    checkContainer();
+  }, [cesiumContainerId, containerReady]);
+
+  // Merge config with defaults
+  const mergedConfig = { ...DEFAULT_CESIUM_CONFIG, ...config };
 
   // Memoize projection to avoid recreation on every render
   const toMap = useMemo(() => createProjection(zone), [zone]);
 
-  // Initialize Cesium when Potree viewer is ready (no url requirement)
+  // Initialize Cesium when Potree viewer is ready and container exists
   useEffect(() => {
-    if (!scriptsLoaded || !viewer) return;
+    if (!scriptsLoaded || !viewer || !containerReady) return;
     if (initializedRef.current) return;
     if (!window.Cesium) {
       console.error('Cesium not loaded');
@@ -76,7 +99,7 @@ export function CesiumCanvas({ basePath = '/potree-static', config = {} }: Props
     const Cesium = window.Cesium;
     const cesiumContainer = document.getElementById(cesiumContainerId);
     if (!cesiumContainer) {
-      console.error('Cesium container not found:', cesiumContainerId);
+      // Container should exist since containerReady is true
       return;
     }
 
@@ -86,23 +109,7 @@ export function CesiumCanvas({ basePath = '/potree-static', config = {} }: Props
       // Configure Cesium base URL
       Cesium.buildModuleUrl.setBaseUrl(getCesiumBasePath(basePath) + '/');
 
-      // Create imagery provider
-      const mapType = config.mapProvider || 'osm';
-      const provider = MAP_PROVIDERS[mapType];
-
-      let imageryProvider: Cesium.ImageryProvider;
-      if (provider.type === 'osm') {
-        imageryProvider = new Cesium.UrlTemplateImageryProvider({
-          url: provider.url + '{z}/{x}/{y}.png',
-          maximumLevel: 19,
-        });
-      } else {
-        imageryProvider = new Cesium.ArcGisMapServerImageryProvider({
-          url: provider.url,
-        });
-      }
-
-      // Create Cesium viewer
+      // Create Cesium viewer with OpenStreetMap imagery (matching reference implementation)
       const cesiumViewer = new Cesium.Viewer(cesiumContainer, {
         useDefaultRenderLoop: false,
         animation: false,
@@ -111,19 +118,22 @@ export function CesiumCanvas({ basePath = '/potree-static', config = {} }: Props
         geocoder: false,
         homeButton: false,
         infoBox: false,
+        skyBox: false,
         sceneModePicker: false,
         selectionIndicator: false,
         timeline: false,
         navigationHelpButton: false,
-        imageryProvider,
-        creditContainer: document.createElement('div'),
+        terrainShadows: Cesium.ShadowMode?.DISABLED,
+        imageryProvider: Cesium.createOpenStreetMapImageryProvider({
+          url: 'https://a.tile.openstreetmap.org/',
+        }),
       });
 
       cesiumRef.current = cesiumViewer;
       setCesiumViewer(cesiumViewer);
 
-      // Set initial view from config or default
-      const initialPos = config.initialPosition || { lon: 100.5, lat: 13.75, height: 50000 };
+      // Set initial view from merged config
+      const initialPos = mergedConfig.initialPosition;
       cesiumViewer.camera.setView({
         destination: Cesium.Cartesian3.fromDegrees(initialPos.lon, initialPos.lat, initialPos.height),
       });
@@ -228,7 +238,7 @@ export function CesiumCanvas({ basePath = '/potree-static', config = {} }: Props
       initializedRef.current = false;
       setCesiumViewer(null);
     };
-  }, [scriptsLoaded, viewer, cesiumContainerId, basePath, config.mapProvider, zone, offsetZ, toMap, setCesiumViewer]);
+  }, [scriptsLoaded, viewer, containerReady, cesiumContainerId, basePath, mergedConfig.mapProvider, mergedConfig.initialPosition, zone, offsetZ, toMap, setCesiumViewer]);
 
   // This component doesn't render anything - parent creates the container
   return null;

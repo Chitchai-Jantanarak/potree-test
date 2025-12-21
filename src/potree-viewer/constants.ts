@@ -5,6 +5,7 @@
 export const DEFAULT_BASE_PATH = '/potree-static';
 
 // Scripts (order matters - dependencies first)
+// CRITICAL: Three.js MUST be loaded before potree.js
 export const getScriptPaths = (basePath = DEFAULT_BASE_PATH) => [
   `${basePath}/lib/jquery/jquery-3.1.1.min.js`,
   `${basePath}/lib/proj4/proj4.js`,
@@ -25,6 +26,7 @@ export const getStylesheetPaths = (basePath = DEFAULT_BASE_PATH) => [
   `${basePath}/lib/jquery-ui/jquery-ui.css`,
   `${basePath}/lib/spectrum/spectrum.css`,
   `${basePath}/lib/jstree/themes/mixed/style.css`,
+  `${basePath}/lib/openlayers3/ol.css`,
 ];
 
 // Cesium paths

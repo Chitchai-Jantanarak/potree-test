@@ -7,6 +7,7 @@
 
 import { useEffect, useRef } from 'react';
 import { usePotreeStore, usePotreeStoreApi } from '../store';
+import { DEFAULT_VIEWER_CONFIG, CONTAINER_IDS } from '../potree.config';
 import type { PotreeViewerConfig } from '../types';
 
 interface Props {
@@ -55,24 +56,32 @@ export function InitialHook({ config = {}, sidebar = false, hasCesium = false, o
       initializedRef.current = true;
 
       const viewer = new window.Potree.Viewer(area);
-      const cfg = configRef.current;
+      const cfg = { ...DEFAULT_VIEWER_CONFIG, ...configRef.current };
 
-      // Apply config
-      viewer.setEDLEnabled(cfg.edlEnabled ?? true);
-      viewer.setFOV(cfg.fov ?? 60);
-      viewer.setPointBudget(cfg.pointBudget ?? 1_000_000);
-      viewer.setBackground(cfg.background ?? null);
+      // Apply config from centralized defaults
+      viewer.setEDLEnabled(cfg.edlEnabled);
+      viewer.setFOV(cfg.fov);
+      viewer.setPointBudget(cfg.pointBudget);
+      viewer.setBackground(cfg.background);
+
+      // Apply EDL settings if provided
+      if (cfg.edlRadius) viewer.setEDLRadius(cfg.edlRadius);
+      if (cfg.edlStrength) viewer.setEDLStrength(cfg.edlStrength);
+
       viewer.loadSettingsFromURL();
 
-      // Set controls
-      const controls = cfg.controls ?? 'orbit';
+      // Set controls - use earth controls when Cesium is active
+      const controls = hasCesiumRef.current ? 'earth' : (cfg.controls ?? 'earth');
       if (controls === 'orbit') {
         viewer.setControls(viewer.orbitControls);
       } else if (controls === 'earth') {
         viewer.setControls(viewer.earthControls);
+      } else if (controls === 'fly') {
+        viewer.setControls(viewer.fpControls);
       }
 
-      // Custom toggle sidebar
+      // Custom toggle sidebar - matching reference implementation pattern
+      // Uses the render area left position to toggle sidebar visibility
       viewer.toggleSidebar = () => {
         const renderArea = document.getElementById(containerId);
         if (!renderArea) return;
@@ -83,20 +92,19 @@ export function InitialHook({ config = {}, sidebar = false, hasCesium = false, o
       viewer.setDescription('');
 
       // Load sidebar GUI
+      // NOTE: Potree's loadGUI is HARDCODED to use '#potree_sidebar_container'
+      // It ignores any custom selector parameter
       if (sidebarRef.current || cfg.showSidebar) {
-        // Shift render area to make room for sidebar
-        area.style.left = '300px';
-
         viewer.loadGUI(() => {
           viewer.setLanguage('en');
-          // Show tools menus
+          // Show tools menus after GUI loads
           try {
             window.$?.('#menu_tools')?.next()?.show();
             window.$?.('#menu_clipping')?.next()?.show();
           } catch {
             // jQuery selectors might fail
           }
-        }, `#potree_sidebar_container_${containerId}`);
+        });
       }
 
       setViewer(viewer);
