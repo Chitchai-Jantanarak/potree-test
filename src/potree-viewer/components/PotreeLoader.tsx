@@ -1,211 +1,117 @@
 'use client';
 
 /**
- * PotreeLoader Component
- * Handles loading of Potree static scripts and stylesheets in the correct order
+ * PotreeLoader - Loads Potree scripts and stylesheets
  */
 
-import { useEffect, useState, useCallback, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { usePotreeStore } from '../store';
 import {
   DEFAULT_BASE_PATH,
   getScriptPaths,
   getStylesheetPaths,
+  getCesiumScriptPath,
+  getCesiumStylesheetPath,
+  getCesiumBasePath,
 } from '../constants';
 
-// ============================================
-// Types
-// ============================================
-
-export interface PotreeLoaderProps {
-  /** Base path for static assets (default: /potree-static) */
+interface Props {
   basePath?: string;
-  /** Callback when all scripts are loaded */
-  onLoad?: () => void;
-  /** Callback on error */
+  includeCesium?: boolean;
   onError?: (error: Error) => void;
-  /** Show loading indicator */
-  showLoading?: boolean;
-  /** Loading component */
-  loadingComponent?: ReactNode;
-  /** Children to render after loading */
   children?: ReactNode;
 }
 
-// ============================================
-// Script Loading Utilities
-// ============================================
-
-/**
- * Load a single script and return a promise
- */
-const loadScript = (src: string): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    // Check if script already exists
-    const existing = document.querySelector(`script[src="${src}"]`);
-    if (existing) {
-      resolve();
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = src;
-    script.async = false; // Important: maintain load order
-
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-
-    document.head.appendChild(script);
+const loadScript = (src: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const el = document.createElement('script');
+    el.src = src;
+    el.async = false;
+    el.onload = () => resolve();
+    el.onerror = () => reject(new Error(`Failed: ${src}`));
+    document.head.appendChild(el);
   });
-};
 
-/**
- * Load a single stylesheet and return a promise
- */
-const loadStylesheet = (href: string): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    // Check if stylesheet already exists
-    const existing = document.querySelector(`link[href="${href}"]`);
-    if (existing) {
-      resolve();
-      return;
-    }
-
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.type = 'text/css';
-    link.href = href;
-
-    link.onload = () => resolve();
-    link.onerror = () => reject(new Error(`Failed to load stylesheet: ${href}`));
-
-    document.head.appendChild(link);
+const loadStyle = (href: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    if (document.querySelector(`link[href="${href}"]`)) return resolve();
+    const el = document.createElement('link');
+    el.rel = 'stylesheet';
+    el.href = href;
+    el.onload = () => resolve();
+    el.onerror = () => reject(new Error(`Failed: ${href}`));
+    document.head.appendChild(el);
   });
-};
 
-/**
- * Load all scripts sequentially (order matters!)
- */
-const loadScriptsSequentially = async (scripts: readonly string[]): Promise<void> => {
-  for (const script of scripts) {
-    await loadScript(script);
-  }
-};
-
-/**
- * Load all stylesheets in parallel
- */
-const loadStylesheetsParallel = async (stylesheets: readonly string[]): Promise<void> => {
-  await Promise.all(stylesheets.map(loadStylesheet));
-};
-
-// ============================================
-// Component
-// ============================================
-
-export function PotreeLoader({
-  basePath = DEFAULT_BASE_PATH,
-  onLoad,
-  onError,
-  showLoading = true,
-  loadingComponent,
-  children,
-}: PotreeLoaderProps) {
-  const [localLoading, setLocalLoading] = useState(true);
-  const [localError, setLocalError] = useState<Error | null>(null);
+export function PotreeLoader({ basePath = DEFAULT_BASE_PATH, includeCesium = false, onError, children }: Props) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   const scriptsLoaded = usePotreeStore((s) => s.scriptsLoaded);
   const setScriptsLoaded = usePotreeStore((s) => s.setScriptsLoaded);
-  const setLoading = usePotreeStore((s) => s.setLoading);
-  const setError = usePotreeStore((s) => s.setError);
+  const setStoreLoading = usePotreeStore((s) => s.setLoading);
+  const setStoreError = usePotreeStore((s) => s.setError);
 
-  const loadAllAssets = useCallback(async () => {
-    // Skip if already loaded
-    if (scriptsLoaded || typeof window === 'undefined') {
-      setLocalLoading(false);
+  useEffect(() => {
+    if (scriptsLoaded) {
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
-    setLocalLoading(true);
+    let cancelled = false;
 
-    try {
-      const scripts = getScriptPaths(basePath);
-      const stylesheets = getStylesheetPaths(basePath);
+    const load = async () => {
+      setStoreLoading(true);
+      try {
+        // Load styles
+        const styles = getStylesheetPaths(basePath);
+        if (includeCesium) styles.push(getCesiumStylesheetPath(basePath));
+        await Promise.all(styles.map(loadStyle));
 
-      // Load stylesheets first (parallel)
-      await loadStylesheetsParallel(stylesheets);
+        // Load Cesium first if needed
+        if (includeCesium) {
+          await loadScript(getCesiumScriptPath(basePath));
+          window.Cesium?.buildModuleUrl.setBaseUrl(getCesiumBasePath(basePath) + '/');
+        }
 
-      // Load scripts sequentially (order matters for dependencies)
-      await loadScriptsSequentially(scripts);
+        // Load Potree scripts sequentially
+        for (const src of getScriptPaths(basePath)) {
+          if (cancelled) return;
+          await loadScript(src);
+        }
 
-      // Verify Potree is available
-      if (typeof window.Potree === 'undefined') {
-        throw new Error(
-          'Potree failed to initialize. Check that potree.js is correctly loaded.'
-        );
+        if (!window.Potree) throw new Error('Potree not loaded');
+        if (includeCesium && !window.Cesium) throw new Error('Cesium not loaded');
+
+        if (!cancelled) {
+          setScriptsLoaded(true);
+          setStoreLoading(false);
+          setLoading(false);
+        }
+      } catch (e) {
+        const err = e instanceof Error ? e : new Error(String(e));
+        if (!cancelled) {
+          setError(err);
+          setStoreError(err);
+          setStoreLoading(false);
+          setLoading(false);
+          onError?.(err);
+        }
       }
+    };
 
-      setScriptsLoaded(true);
-      setLoading(false);
-      setLocalLoading(false);
-      setError(null);
-      setLocalError(null);
+    load();
+    return () => { cancelled = true; };
+  }, [basePath, includeCesium, scriptsLoaded, setScriptsLoaded, setStoreLoading, setStoreError]);
 
-      onLoad?.();
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setError(error);
-      setLocalError(error);
-      setLoading(false);
-      setLocalLoading(false);
-
-      onError?.(error);
-    }
-  }, [basePath, scriptsLoaded, setScriptsLoaded, setLoading, setError, onLoad, onError]);
-
-  useEffect(() => {
-    loadAllAssets();
-  }, [loadAllAssets]);
-
-  // Error state
-  if (localError) {
-    return (
-      <div className="potree-loader-error" style={{ padding: '20px', color: 'red' }}>
-        <h3>Failed to load Potree</h3>
-        <p>{localError.message}</p>
-        <button onClick={() => loadAllAssets()}>Retry</button>
-      </div>
-    );
+  if (error) {
+    return <div style={{ color: 'red', padding: 20 }}>Error: {error.message}</div>;
   }
 
-  // Loading state
-  if (localLoading && !scriptsLoaded) {
-    if (loadingComponent) {
-      return <>{loadingComponent}</>;
-    }
-
-    if (showLoading) {
-      return (
-        <div
-          className="potree-loader-loading"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-          }}
-        >
-          <span>Loading Potree...</span>
-        </div>
-      );
-    }
-
-    return null;
+  if (loading) {
+    return <div style={{ padding: 20 }}>Loading Potree...</div>;
   }
 
-  // Loaded - render children
   return <>{children}</>;
 }
-
-export default PotreeLoader;

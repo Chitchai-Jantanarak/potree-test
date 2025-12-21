@@ -1,154 +1,90 @@
 'use client';
 
 /**
- * Potree Viewer Store
- * Zustand-based state management for the Potree viewer
+ * Potree Store - Zustand store with React Context
  */
 
 import { createContext, useContext, useRef, type ReactNode } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
+import type { PotreeStore, UTMZone } from './types';
 
-import type {
-  PotreeViewerState,
-  PotreeViewerActions,
-  PotreeViewerStore,
-} from './types';
+interface StoreInitialProps {
+  containerId?: string;
+  url?: string;
+  zone?: UTMZone;
+  offsetZ?: number;
+}
 
-// ============================================
-// Initial State
-// ============================================
+const createPotreeStore = (initial: StoreInitialProps = {}) =>
+  createStore<PotreeStore>((set) => ({
+    // Viewers
+    viewer: null,
+    cesiumViewer: null,
 
-const initialState: PotreeViewerState = {
-  viewer: null,
-  isLoading: false,
-  scriptsLoaded: false,
-  error: null,
-  pointClouds: new Map(),
-};
+    // Loading states
+    scriptsLoaded: false,
+    isLoading: false,
+    error: null,
 
-// ============================================
-// Store Factory
-// ============================================
-
-export const createPotreeStore = (): StoreApi<PotreeViewerStore> => {
-  return createStore<PotreeViewerStore>((set, get) => ({
-    // State
-    ...initialState,
+    // Config with defaults
+    containerId: initial.containerId || 'potree_render_area',
+    url: initial.url || null,
+    zone: initial.zone || '47',
+    offsetZ: initial.offsetZ || 0,
 
     // Actions
     setViewer: (viewer) => set({ viewer }),
-
-    setLoading: (isLoading) => set({ isLoading }),
-
+    setCesiumViewer: (cesiumViewer) => set({ cesiumViewer }),
     setScriptsLoaded: (scriptsLoaded) => set({ scriptsLoaded }),
-
+    setLoading: (isLoading) => set({ isLoading }),
     setError: (error) => set({ error }),
-
-    addPointCloud: (name, pointCloud) => {
-      const pointClouds = new Map(get().pointClouds);
-      pointClouds.set(name, pointCloud);
-      set({ pointClouds });
-    },
-
-    removePointCloud: (name) => {
-      const pointClouds = new Map(get().pointClouds);
-      const pc = pointClouds.get(name);
-      if (pc && get().viewer) {
-        get().viewer?.scene.removePointCloud(pc);
-      }
-      pointClouds.delete(name);
-      set({ pointClouds });
-    },
-
-    reset: () => {
-      const { viewer } = get();
-      if (viewer) {
-        // Clean up viewer if needed
-      }
+    setUrl: (url) => set({ url }),
+    setContainerId: (containerId) => set({ containerId }),
+    setZone: (zone) => set({ zone }),
+    setOffsetZ: (offsetZ) => set({ offsetZ }),
+    reset: () =>
       set({
-        ...initialState,
-        pointClouds: new Map(),
-      });
-    },
+        viewer: null,
+        cesiumViewer: null,
+        scriptsLoaded: false,
+        isLoading: false,
+        error: null,
+      }),
   }));
-};
 
-// ============================================
-// Context
-// ============================================
+const StoreContext = createContext<StoreApi<PotreeStore> | null>(null);
 
-const PotreeStoreContext = createContext<StoreApi<PotreeViewerStore> | null>(null);
-
-// ============================================
-// Provider Component
-// ============================================
-
-export interface PotreeProviderProps {
+interface PotreeProviderProps extends StoreInitialProps {
   children: ReactNode;
 }
 
-export function PotreeProvider({ children }: PotreeProviderProps) {
-  const storeRef = useRef<StoreApi<PotreeViewerStore> | null>(null);
-
+export function PotreeProvider({
+  children,
+  containerId,
+  url,
+  zone,
+  offsetZ,
+}: PotreeProviderProps) {
+  const storeRef = useRef<StoreApi<PotreeStore> | null>(null);
   if (!storeRef.current) {
-    storeRef.current = createPotreeStore();
+    storeRef.current = createPotreeStore({ containerId, url, zone, offsetZ });
   }
-
   return (
-    <PotreeStoreContext.Provider value={storeRef.current}>
+    <StoreContext.Provider value={storeRef.current}>
       {children}
-    </PotreeStoreContext.Provider>
+    </StoreContext.Provider>
   );
 }
 
-// ============================================
-// Hooks
-// ============================================
-
-/**
- * Access the Potree store with a selector
- */
-export function usePotreeStore<T>(selector: (state: PotreeViewerStore) => T): T {
-  const store = useContext(PotreeStoreContext);
-
-  if (!store) {
-    throw new Error(
-      'usePotreeStore must be used within a PotreeProvider. ' +
-      'Make sure to wrap your component tree with <PotreeProvider>.'
-    );
-  }
-
+export function usePotreeStore<T>(selector: (s: PotreeStore) => T): T {
+  const store = useContext(StoreContext);
+  if (!store) throw new Error('usePotreeStore must be within PotreeProvider');
   return useStore(store, selector);
 }
 
-/**
- * Get the raw store instance (for advanced use cases)
- */
-export function usePotreeStoreApi(): StoreApi<PotreeViewerStore> {
-  const store = useContext(PotreeStoreContext);
-
-  if (!store) {
-    throw new Error(
-      'usePotreeStoreApi must be used within a PotreeProvider. ' +
-      'Make sure to wrap your component tree with <PotreeProvider>.'
-    );
-  }
-
+// Direct store access for advanced use cases
+export function usePotreeStoreApi() {
+  const store = useContext(StoreContext);
+  if (!store) throw new Error('usePotreeStoreApi must be within PotreeProvider');
   return store;
 }
-
-// ============================================
-// Convenience Selectors
-// ============================================
-
-export const selectViewer = (state: PotreeViewerStore) => state.viewer;
-export const selectIsLoading = (state: PotreeViewerStore) => state.isLoading;
-export const selectScriptsLoaded = (state: PotreeViewerStore) => state.scriptsLoaded;
-export const selectError = (state: PotreeViewerStore) => state.error;
-export const selectPointClouds = (state: PotreeViewerStore) => state.pointClouds;
-
-// ============================================
-// Export Types
-// ============================================
-
-export type { PotreeViewerStore, PotreeViewerState, PotreeViewerActions };

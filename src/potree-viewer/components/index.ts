@@ -1,13 +1,17 @@
 /**
- * Potree Viewer Components
- * Export all components for the Potree viewer integration
+ * Component exports
  */
 
+// Main viewer (use this for most cases)
+export { default as PotreeViewer } from './PotreeViewerMain';
+
+// Lower-level components for custom setups
 export { PotreeLoader } from './PotreeLoader';
-export type { PotreeLoaderProps } from './PotreeLoader';
+export { RenderArea } from './RenderArea';
+export { CesiumCanvas } from './CesiumCanvas';
+export { InitialHook } from './InitialHook';
+export { UpdateHook } from './UpdateHook';
 
-export { PotreeContainer } from './PotreeContainer';
-export type { PotreeContainerProps } from './PotreeContainer';
-
-export { PotreeViewer } from './PotreeViewer';
-export type { PotreeViewerProps } from './PotreeViewer';
+// Legacy/standalone components
+export { PotreeViewer as PotreeViewerSimple } from './PotreeViewer';
+export { CesiumPotreeViewer } from './CesiumPotreeViewer';

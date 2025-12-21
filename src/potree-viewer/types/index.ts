@@ -1,188 +1,122 @@
 /**
- * Potree Viewer Type Definitions
- * Re-exports and custom types for the Potree viewer integration
+ * Potree Viewer Types
  */
 
-import type { ReactNode } from 'react';
+/// <reference path="./globals.d.ts" />
 
-// Re-export Potree types
-export type { Potree } from './potree.d';
+import type { ReactNode, CSSProperties } from 'react';
 
-// ============================================
-// Viewer Configuration Types
-// ============================================
+// UTM Zone types
+export type UTMZone = '47' | '48';
 
-export interface PotreeViewerConfig {
-  /** Enable Eye-Dome Lighting effect */
-  edlEnabled?: boolean;
-  /** EDL radius */
-  edlRadius?: number;
-  /** EDL strength */
-  edlStrength?: number;
-  /** Field of view in degrees */
-  fov?: number;
-  /** Maximum number of points to render */
-  pointBudget?: number;
-  /** Background style */
-  background?: 'skybox' | 'gradient' | 'black' | 'white' | null;
-  /** Default control type */
-  controls?: 'earth' | 'orbit' | 'firstPerson';
-  /** Language for UI */
-  language?: string;
-  /** Show sidebar */
-  showSidebar?: boolean;
-  /** Show GUI */
-  showGUI?: boolean;
-}
+// Background types
+export type Background = 'skybox' | 'gradient' | 'black' | 'white' | null;
 
+// Point cloud configuration
 export interface PointCloudConfig {
-  /** URL to the point cloud metadata */
   url: string;
-  /** Name identifier for the point cloud */
   name: string;
-  /** Point size */
-  size?: number;
-  /** Point size type */
-  sizeType?: 'fixed' | 'attenuated' | 'adaptive';
-  /** Point shape */
-  shape?: 'square' | 'circle' | 'paraboloid';
-  /** Opacity */
-  opacity?: number;
-  /** Position offset */
   position?: { x?: number; y?: number; z?: number };
-  /** Rotation in radians */
   rotation?: { x?: number; y?: number; z?: number };
-  /** Scale */
   scale?: { x?: number; y?: number; z?: number };
-  /** Initial visibility */
   visible?: boolean;
+  size?: number;
+  sizeType?: 'adaptive' | 'fixed';
+  shape?: 'square' | 'circle';
+  activeAttribute?: 'rgba' | 'elevation' | 'intensity';
 }
 
-// ============================================
-// Component Props Types
-// ============================================
-
-export interface PotreeProviderProps {
-  children: ReactNode;
-  /** Base path for Potree static assets */
-  basePath?: string;
+// Viewer configuration
+export interface PotreeViewerConfig {
+  fov?: number;
+  pointBudget?: number;
+  background?: Background;
+  edlEnabled?: boolean;
+  edlRadius?: number;
+  edlStrength?: number;
+  showGUI?: boolean;
+  showSidebar?: boolean;
+  controls?: 'orbit' | 'earth' | 'fly';
 }
 
+// Cesium configuration
+export interface CesiumConfig {
+  enabled?: boolean;
+  zone?: UTMZone;
+  offsetZ?: number;
+  mapProvider?: 'osm' | 'esri';
+  initialPosition?: {
+    lon: number;
+    lat: number;
+    height: number;
+  };
+}
+
+// Main viewer props
 export interface PotreeViewerProps {
-  /** Viewer configuration */
+  // Point cloud URL (single)
+  url?: string;
+
+  // Container ID
+  containerId?: string;
+
+  // Viewer config
   config?: PotreeViewerConfig;
-  /** Point clouds to load */
+
+  // Cesium config (pass to enable Cesium)
+  cesium?: CesiumConfig;
+
+  // Point clouds to load
   pointClouds?: PointCloudConfig[];
-  /** CSS class name */
+
+  // Sidebar
+  sidebar?: boolean;
+
+  // Auto focus on loaded point clouds
+  autoFocus?: boolean;
+
+  // Styling
   className?: string;
-  /** Inline styles */
-  style?: React.CSSProperties;
-  /** Callback when viewer is ready */
-  onReady?: (viewer: Potree.Viewer) => void;
-  /** Callback when point cloud is loaded */
-  onPointCloudLoaded?: (result: Potree.LoadPointCloudResult) => void;
-  /** Callback on error */
-  onError?: (error: Error) => void;
-  /** Children components */
+  style?: CSSProperties;
+
+  // Children in render area (overlays on the viewer)
+  renderAreaChildren?: ReactNode;
+
+  // Additional children (sidebar, controls, etc.)
   children?: ReactNode;
+
+  // Callbacks
+  onReady?: (viewer: Potree.Viewer, cesiumViewer?: Cesium.Viewer) => void;
+  onPointCloudLoaded?: (name: string, pointcloud: Potree.PointCloudOctree) => void;
+  onError?: (error: Error) => void;
 }
 
-export interface PotreeLoaderProps {
-  /** Base path for static assets (default: /potree-static) */
-  basePath?: string;
-  /** Callback when all scripts are loaded */
-  onLoad?: () => void;
-  /** Callback on error */
-  onError?: (error: Error) => void;
-  /** Children to render after loading */
-  children?: ReactNode;
-}
-
-// ============================================
-// Store Types
-// ============================================
-
-export interface PotreeViewerState {
-  /** The Potree viewer instance */
+// Store state
+export interface PotreeStore {
+  // Viewers
   viewer: Potree.Viewer | null;
-  /** Loading state */
-  isLoading: boolean;
-  /** Whether scripts are loaded */
-  scriptsLoaded: boolean;
-  /** Error if any */
-  error: Error | null;
-  /** Loaded point clouds */
-  pointClouds: Map<string, Potree.PointCloudOctree>;
-}
+  cesiumViewer: Cesium.Viewer | null;
 
-export interface PotreeViewerActions {
-  /** Set the viewer instance */
+  // Loading states
+  scriptsLoaded: boolean;
+  isLoading: boolean;
+  error: Error | null;
+
+  // Config
+  containerId: string;
+  url: string | null;
+  zone: UTMZone;
+  offsetZ: number;
+
+  // Actions
   setViewer: (viewer: Potree.Viewer | null) => void;
-  /** Set loading state */
-  setLoading: (loading: boolean) => void;
-  /** Set scripts loaded state */
+  setCesiumViewer: (viewer: Cesium.Viewer | null) => void;
   setScriptsLoaded: (loaded: boolean) => void;
-  /** Set error */
+  setLoading: (loading: boolean) => void;
   setError: (error: Error | null) => void;
-  /** Add a point cloud to tracking */
-  addPointCloud: (name: string, pointCloud: Potree.PointCloudOctree) => void;
-  /** Remove a point cloud from tracking */
-  removePointCloud: (name: string) => void;
-  /** Clear all state */
+  setUrl: (url: string | null) => void;
+  setContainerId: (id: string) => void;
+  setZone: (zone: UTMZone) => void;
+  setOffsetZ: (offset: number) => void;
   reset: () => void;
-}
-
-export type PotreeViewerStore = PotreeViewerState & PotreeViewerActions;
-
-// ============================================
-// Hook Return Types
-// ============================================
-
-export interface UsePotreeViewerReturn {
-  /** The Potree viewer instance */
-  viewer: Potree.Viewer | null;
-  /** Whether the viewer is loading */
-  isLoading: boolean;
-  /** Whether scripts are loaded */
-  scriptsLoaded: boolean;
-  /** Error if any */
-  error: Error | null;
-  /** Load a point cloud */
-  loadPointCloud: (config: PointCloudConfig) => Promise<Potree.LoadPointCloudResult>;
-  /** Get a loaded point cloud by name */
-  getPointCloud: (name: string) => Potree.PointCloudOctree | undefined;
-  /** Fit camera to view all point clouds */
-  fitToScreen: () => void;
-  /** Set viewer background */
-  setBackground: (bg: PotreeViewerConfig['background']) => void;
-  /** Toggle sidebar visibility */
-  toggleSidebar: () => void;
-}
-
-// ============================================
-// Utility Types
-// ============================================
-
-export type ScriptLoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
-
-export interface ScriptInfo {
-  src: string;
-  status: ScriptLoadStatus;
-  async?: boolean;
-}
-
-export interface StylesheetInfo {
-  href: string;
-  status: ScriptLoadStatus;
-}
-
-// ============================================
-// Constants Types
-// ============================================
-
-export interface PotreeConstants {
-  DEFAULT_CONFIG: Required<PotreeViewerConfig>;
-  DEFAULT_POINT_CLOUD_CONFIG: Required<Omit<PointCloudConfig, 'url' | 'name'>>;
-  SCRIPTS: readonly string[];
-  STYLESHEETS: readonly string[];
 }

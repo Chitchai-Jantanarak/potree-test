@@ -1,10 +1,5 @@
 /**
- * Potree Viewer Hooks
- * Export all hooks for the Potree viewer integration
+ * Hook exports
  */
 
-export { usePotreeViewer } from './usePotreeViewer';
-export type { UsePotreeViewerReturn } from '../types';
-
-export { usePointCloud } from './usePointCloud';
-export type { UsePointCloudOptions, UsePointCloudReturn } from './usePointCloud';
+export { usePotreeViewer, usePointCloud, useCesiumPotree } from './usePotreeViewer';

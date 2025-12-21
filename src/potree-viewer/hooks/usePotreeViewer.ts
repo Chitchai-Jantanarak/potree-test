@@ -1,144 +1,185 @@
 'use client';
 
 /**
- * usePotreeViewer Hook
- * Provides convenient access to the Potree viewer and common operations
+ * Potree Viewer Hooks
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { usePotreeStore } from '../store';
-import {
-  DEFAULT_POINT_CLOUD_CONFIG,
-  POINT_SIZE_TYPE_MAP,
-  POINT_SHAPE_MAP,
-} from '../constants';
-import type { PointCloudConfig, PotreeViewerConfig, UsePotreeViewerReturn } from '../types';
 
 /**
- * Hook to access and control the Potree viewer
+ * Hook to access the Potree and Cesium viewer instances
  */
-export function usePotreeViewer(): UsePotreeViewerReturn {
+export function usePotreeViewer() {
   const viewer = usePotreeStore((s) => s.viewer);
-  const isLoading = usePotreeStore((s) => s.isLoading);
+  const cesiumViewer = usePotreeStore((s) => s.cesiumViewer);
   const scriptsLoaded = usePotreeStore((s) => s.scriptsLoaded);
+  const isLoading = usePotreeStore((s) => s.isLoading);
   const error = usePotreeStore((s) => s.error);
-  const pointClouds = usePotreeStore((s) => s.pointClouds);
-  const addPointCloud = usePotreeStore((s) => s.addPointCloud);
-
-  /**
-   * Load a point cloud into the viewer
-   */
-  const loadPointCloud = useCallback(
-    async (config: PointCloudConfig): Promise<Potree.LoadPointCloudResult> => {
-      if (!viewer || !window.Potree) {
-        throw new Error('Viewer not initialized');
-      }
-
-      const mergedConfig = {
-        ...DEFAULT_POINT_CLOUD_CONFIG,
-        ...config,
-      };
-
-      return new Promise((resolve, reject) => {
-        try {
-          window.Potree.loadPointCloud(
-            mergedConfig.url,
-            mergedConfig.name,
-            (result) => {
-              try {
-                const { pointcloud } = result;
-
-                // Apply transformations
-                if (mergedConfig.position) {
-                  pointcloud.position.x += mergedConfig.position.x ?? 0;
-                  pointcloud.position.y += mergedConfig.position.y ?? 0;
-                  pointcloud.position.z += mergedConfig.position.z ?? 0;
-                }
-
-                if (mergedConfig.rotation) {
-                  pointcloud.rotation.x = mergedConfig.rotation.x ?? 0;
-                  pointcloud.rotation.y = mergedConfig.rotation.y ?? 0;
-                  pointcloud.rotation.z = mergedConfig.rotation.z ?? 0;
-                }
-
-                if (mergedConfig.scale) {
-                  pointcloud.scale.x = mergedConfig.scale.x ?? 1;
-                  pointcloud.scale.y = mergedConfig.scale.y ?? 1;
-                  pointcloud.scale.z = mergedConfig.scale.z ?? 1;
-                }
-
-                pointcloud.visible = mergedConfig.visible;
-
-                // Material settings
-                const material = pointcloud.material;
-                material.size = mergedConfig.size;
-                material.pointSizeType = POINT_SIZE_TYPE_MAP[mergedConfig.sizeType];
-                material.shape = POINT_SHAPE_MAP[mergedConfig.shape];
-                material.opacity = mergedConfig.opacity;
-
-                // Add to scene
-                viewer.scene.addPointCloud(pointcloud);
-                addPointCloud(mergedConfig.name, pointcloud);
-
-                resolve(result);
-              } catch (err) {
-                reject(err);
-              }
-            }
-          );
-        } catch (err) {
-          reject(err);
-        }
-      });
-    },
-    [viewer, addPointCloud]
-  );
-
-  /**
-   * Get a loaded point cloud by name
-   */
-  const getPointCloud = useCallback(
-    (name: string): Potree.PointCloudOctree | undefined => {
-      return pointClouds.get(name);
-    },
-    [pointClouds]
-  );
-
-  /**
-   * Fit camera to view all point clouds
-   */
-  const fitToScreen = useCallback(() => {
-    viewer?.fitToScreen();
-  }, [viewer]);
-
-  /**
-   * Set viewer background
-   */
-  const setBackground = useCallback(
-    (bg: PotreeViewerConfig['background']) => {
-      viewer?.setBackground(bg ?? null);
-    },
-    [viewer]
-  );
-
-  /**
-   * Toggle sidebar visibility
-   */
-  const toggleSidebar = useCallback(() => {
-    viewer?.toggleSidebar();
-  }, [viewer]);
+  const url = usePotreeStore((s) => s.url);
+  const containerId = usePotreeStore((s) => s.containerId);
+  const zone = usePotreeStore((s) => s.zone);
+  const offsetZ = usePotreeStore((s) => s.offsetZ);
 
   return {
+    // Viewers
     viewer,
-    isLoading,
+    cesiumViewer,
+
+    // State
     scriptsLoaded,
+    isLoading,
     error,
-    loadPointCloud,
-    getPointCloud,
-    fitToScreen,
-    setBackground,
-    toggleSidebar,
+    isReady: !!viewer,
+
+    // Config
+    url,
+    containerId,
+    zone,
+    offsetZ,
   };
 }
 
-export default usePotreeViewer;
+/**
+ * Hook for loading and controlling a point cloud
+ */
+interface UsePointCloudOptions {
+  url: string;
+  name: string;
+  autoLoad?: boolean;
+  autoFit?: boolean;
+}
+
+export function usePointCloud({ url, name, autoLoad = true, autoFit = false }: UsePointCloudOptions) {
+  const viewer = usePotreeStore((s) => s.viewer);
+  const [pointCloud, setPointCloud] = useState<Potree.PointCloudOctree | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const load = useCallback(() => {
+    if (!viewer || !window.Potree || pointCloud) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      window.Potree.loadPointCloud(url, name, (result) => {
+        const cloud = result.pointcloud;
+        viewer.scene.addPointCloud(cloud);
+        setPointCloud(cloud);
+        setIsLoading(false);
+
+        if (autoFit) {
+          viewer.fitToScreen();
+        }
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+      setIsLoading(false);
+    }
+  }, [viewer, url, name, pointCloud, autoFit]);
+
+  const unload = useCallback(() => {
+    if (!viewer || !pointCloud) return;
+    viewer.scene.removePointCloud(pointCloud);
+    setPointCloud(null);
+  }, [viewer, pointCloud]);
+
+  const setVisible = useCallback(
+    (visible: boolean) => {
+      if (pointCloud) pointCloud.visible = visible;
+    },
+    [pointCloud]
+  );
+
+  const setOpacity = useCallback(
+    (opacity: number) => {
+      if (pointCloud?.material) pointCloud.material.opacity = opacity;
+    },
+    [pointCloud]
+  );
+
+  const setPointSize = useCallback(
+    (size: number) => {
+      if (pointCloud?.material) pointCloud.material.size = size;
+    },
+    [pointCloud]
+  );
+
+  const fitToView = useCallback(() => {
+    if (viewer) viewer.fitToScreen();
+  }, [viewer]);
+
+  // Auto-load if enabled
+  useEffect(() => {
+    if (autoLoad && viewer && !pointCloud && !isLoading) {
+      load();
+    }
+  }, [autoLoad, viewer, pointCloud, isLoading, load]);
+
+  return {
+    pointCloud,
+    isLoading,
+    error,
+    load,
+    unload,
+    setVisible,
+    setOpacity,
+    setPointSize,
+    fitToView,
+  };
+}
+
+/**
+ * Hook for Cesium controls (when using CesiumPotreeViewer or cesium config)
+ */
+export function useCesiumPotree(cesiumViewerOverride?: Cesium.Viewer | null) {
+  const cesiumViewerFromStore = usePotreeStore((s) => s.cesiumViewer);
+  const cesiumViewer = cesiumViewerOverride ?? cesiumViewerFromStore;
+
+  const flyTo = useCallback(
+    (lon: number, lat: number, height: number, duration = 2) => {
+      if (!cesiumViewer || !window.Cesium) return;
+
+      const Cesium = window.Cesium;
+      cesiumViewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(lon, lat, height),
+        duration,
+      });
+    },
+    [cesiumViewer]
+  );
+
+  const setGlobeVisible = useCallback(
+    (visible: boolean) => {
+      if (!cesiumViewer) return;
+      cesiumViewer.scene.globe.show = visible;
+    },
+    [cesiumViewer]
+  );
+
+  const zoomIn = useCallback(
+    (amount = 0.5) => {
+      if (!cesiumViewer) return;
+      cesiumViewer.camera.zoomIn(cesiumViewer.camera.positionCartographic.height * amount);
+    },
+    [cesiumViewer]
+  );
+
+  const zoomOut = useCallback(
+    (amount = 0.5) => {
+      if (!cesiumViewer) return;
+      cesiumViewer.camera.zoomOut(cesiumViewer.camera.positionCartographic.height * amount);
+    },
+    [cesiumViewer]
+  );
+
+  return {
+    cesiumViewer,
+    flyTo,
+    setGlobeVisible,
+    zoomIn,
+    zoomOut,
+    isReady: !!cesiumViewer,
+  };
+}

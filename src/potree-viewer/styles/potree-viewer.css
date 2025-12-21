@@ -1,100 +1,78 @@
 /**
  * Potree Viewer Styles
- * Custom styles for the Potree viewer integration
  */
 
-/* Container wrapper */
-.potree-wrapper {
+.potree_container {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
 }
 
-/* Hide sidebar language selector (optional) */
-.potree-wrapper #potree_sidebar_container #potree_languages {
-  display: none;
-}
-
-/* Hide sidebar images (optional) */
-.potree-wrapper #potree_sidebar_container > img {
-  display: none;
-}
-
-/* Quick buttons positioning */
-.potree-wrapper .potree_quick_buttons {
+/* Potree render area */
+.potree_render_area_class {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 100;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: auto;
 }
 
-/* Loading state */
-.potree-loader-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Cesium container - behind Potree */
+.cesium-container {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Cesium canvas fills container */
+.cesium-widget,
+.cesium-widget canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  background: #1a1a1a;
-  color: #ffffff;
-  font-family: system-ui, -apple-system, sans-serif;
 }
 
-/* Error state */
-.potree-loader-error {
-  padding: 20px;
-  background: #1a1a1a;
-  color: #ff4444;
-  font-family: system-ui, -apple-system, sans-serif;
+/* Hide Cesium credit container */
+.cesium-viewer-bottom {
+  display: none !important;
 }
 
-.potree-loader-error h3 {
-  margin: 0 0 10px 0;
+/* Hide Potree default loading screen */
+#potree_loading_screen {
+  display: none !important;
 }
 
-.potree-loader-error button {
-  margin-top: 10px;
-  padding: 8px 16px;
-  background: #333;
-  color: #fff;
-  border: 1px solid #555;
-  border-radius: 4px;
-  cursor: pointer;
+/* Potree sidebar styles */
+.potree_sidebar_container {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 300px;
+  z-index: 100;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.potree-loader-error button:hover {
-  background: #444;
+/* Ensure Potree sidebar content is visible */
+.potree_sidebar_container .sidebar {
+  width: 100% !important;
 }
 
-/* Full-screen viewer container */
-.potree-fullscreen {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
+/* Potree info panel positioning */
+#potree_description {
+  z-index: 50;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  /* Collapse sidebar on mobile */
-  .potree-wrapper #potree_sidebar_container {
-    width: 250px;
-  }
-
-  /* Adjust quick buttons */
-  .potree-wrapper .potree_quick_buttons {
-    top: 5px;
-    right: 5px;
-  }
+/* When Cesium is active, make Potree canvas transparent */
+.potree_container .cesium-container + .potree_render_area_class canvas {
+  background: transparent !important;
 }
 
-/* Dark mode support (if using Tailwind dark mode) */
-@media (prefers-color-scheme: dark) {
-  .potree-loader-loading {
-    background: #0a0a0a;
-  }
-
-  .potree-loader-error {
-    background: #0a0a0a;
-  }
+/* Potree WebGL renderer - make transparent when Cesium active */
+.potree_render_area_class > canvas {
+  pointer-events: auto;
 }

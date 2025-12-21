@@ -1,296 +1,178 @@
 'use client';
 
 /**
- * PotreeViewer Component
- * Main component that initializes and manages the Potree viewer
+ * PotreeViewer - Main Potree viewer component
  */
 
-import {
-  useEffect,
-  useRef,
-  useCallback,
-  type ReactNode,
-  type CSSProperties,
-} from 'react';
+import { useEffect, useRef, type ReactNode, type CSSProperties } from 'react';
 import { usePotreeStore } from '../store';
-import { PotreeContainer } from './PotreeContainer';
-import {
-  DEFAULT_VIEWER_CONFIG,
-  DEFAULT_POINT_CLOUD_CONFIG,
-  POINT_SIZE_TYPE_MAP,
-  POINT_SHAPE_MAP,
-  CONTROL_TYPE_MAP,
-} from '../constants';
 import type { PotreeViewerConfig, PointCloudConfig } from '../types';
 
-// ============================================
-// Types
-// ============================================
-
-export interface PotreeViewerProps {
-  /** Viewer configuration */
+interface Props {
   config?: PotreeViewerConfig;
-  /** Point clouds to load initially */
   pointClouds?: PointCloudConfig[];
-  /** Render area element ID */
-  renderAreaId?: string;
-  /** CSS class name */
   className?: string;
-  /** Inline styles */
   style?: CSSProperties;
-  /** Include Cesium integration container */
   includeCesium?: boolean;
-  /** Callback when viewer is ready */
   onReady?: (viewer: Potree.Viewer) => void;
-  /** Callback when point cloud is loaded */
-  onPointCloudLoaded?: (name: string, result: Potree.LoadPointCloudResult) => void;
-  /** Callback on error */
   onError?: (error: Error) => void;
-  /** Children rendered inside the container */
   children?: ReactNode;
 }
 
-// ============================================
-// Component
-// ============================================
+// Unique ID generator
+let idCounter = 0;
+const genId = () => `potree_${++idCounter}_${Date.now()}`;
 
 export function PotreeViewer({
   config = {},
   pointClouds = [],
-  renderAreaId = 'potree_render_area',
   className,
   style,
   includeCesium = false,
   onReady,
-  onPointCloudLoaded,
   onError,
   children,
-}: PotreeViewerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+}: Props) {
+  const renderAreaRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Potree.Viewer | null>(null);
-  const initRef = useRef(false);
+  const initedRef = useRef(false);
+  const idsRef = useRef({ render: genId(), sidebar: genId(), cesium: genId() });
 
   const scriptsLoaded = usePotreeStore((s) => s.scriptsLoaded);
   const setViewer = usePotreeStore((s) => s.setViewer);
-  const addPointCloud = usePotreeStore((s) => s.addPointCloud);
-  const setError = usePotreeStore((s) => s.setError);
 
-  // Merge config with defaults
-  const mergedConfig: Required<PotreeViewerConfig> = {
-    ...DEFAULT_VIEWER_CONFIG,
-    ...config,
-  };
+  // Initialize viewer
+  useEffect(() => {
+    if (!scriptsLoaded || !renderAreaRef.current) return;
+    if (!window.Potree) return;
 
-  /**
-   * Load a single point cloud
-   */
-  const loadPointCloud = useCallback(
-    async (pcConfig: PointCloudConfig): Promise<void> => {
-      if (!viewerRef.current || !window.Potree) {
-        throw new Error('Viewer not initialized');
-      }
+    // Prevent double initialization in React Strict Mode
+    if (initedRef.current) return;
+    initedRef.current = true;
 
-      const viewer = viewerRef.current;
+    // Small delay to ensure DOM is ready
+    const initTimeout = setTimeout(() => {
+      if (!renderAreaRef.current) return;
 
-      const mergedPcConfig = {
-        ...DEFAULT_POINT_CLOUD_CONFIG,
-        ...pcConfig,
-      };
+      try {
+        const viewer = new window.Potree.Viewer(renderAreaRef.current);
+        viewerRef.current = viewer;
 
-      return new Promise((resolve, reject) => {
-        try {
-          window.Potree.loadPointCloud(
-            mergedPcConfig.url,
-            mergedPcConfig.name,
-            (result) => {
-              try {
-                const { pointcloud } = result;
+      // Apply config
+      const c = config;
+      if (c.fov) viewer.setFOV(c.fov);
+      if (c.pointBudget) viewer.setPointBudget(c.pointBudget);
+      if (c.background !== undefined) viewer.setBackground(c.background);
+      if (c.edlEnabled !== undefined) viewer.setEDLEnabled(c.edlEnabled);
+      if (c.edlRadius) viewer.setEDLRadius(c.edlRadius);
+      if (c.edlStrength) viewer.setEDLStrength(c.edlStrength);
 
-                // Apply position offset
-                if (mergedPcConfig.position) {
-                  pointcloud.position.x += mergedPcConfig.position.x ?? 0;
-                  pointcloud.position.y += mergedPcConfig.position.y ?? 0;
-                  pointcloud.position.z += mergedPcConfig.position.z ?? 0;
-                }
-
-                // Apply rotation
-                if (mergedPcConfig.rotation) {
-                  pointcloud.rotation.x = mergedPcConfig.rotation.x ?? 0;
-                  pointcloud.rotation.y = mergedPcConfig.rotation.y ?? 0;
-                  pointcloud.rotation.z = mergedPcConfig.rotation.z ?? 0;
-                }
-
-                // Apply scale
-                if (mergedPcConfig.scale) {
-                  pointcloud.scale.x = mergedPcConfig.scale.x ?? 1;
-                  pointcloud.scale.y = mergedPcConfig.scale.y ?? 1;
-                  pointcloud.scale.z = mergedPcConfig.scale.z ?? 1;
-                }
-
-                // Apply visibility
-                pointcloud.visible = mergedPcConfig.visible;
-
-                // Configure material
-                const material = pointcloud.material;
-                material.size = mergedPcConfig.size;
-                material.pointSizeType = POINT_SIZE_TYPE_MAP[mergedPcConfig.sizeType];
-                material.shape = POINT_SHAPE_MAP[mergedPcConfig.shape];
-                material.opacity = mergedPcConfig.opacity;
-
-                // Add to scene
-                viewer.scene.addPointCloud(pointcloud);
-
-                // Track in store
-                addPointCloud(mergedPcConfig.name, pointcloud);
-
-                // Callback
-                onPointCloudLoaded?.(mergedPcConfig.name, result);
-
-                resolve();
-              } catch (err) {
-                reject(err);
-              }
-            }
-          );
-        } catch (err) {
-          reject(err);
-        }
-      });
-    },
-    [addPointCloud, onPointCloudLoaded]
-  );
-
-  /**
-   * Initialize the Potree viewer
-   */
-  const initializeViewer = useCallback(async () => {
-    if (initRef.current || !scriptsLoaded || typeof window === 'undefined') {
-      return;
-    }
-
-    const renderArea = document.getElementById(renderAreaId);
-    if (!renderArea) {
-      const error = new Error(`Render area element not found: ${renderAreaId}`);
-      setError(error);
-      onError?.(error);
-      return;
-    }
-
-    // Check if already rendered
-    if (renderArea.getAttribute('data-potree-render') === 'true') {
-      return;
-    }
-
-    try {
-      initRef.current = true;
-
-      // Create viewer instance
-      const viewer = new window.Potree.Viewer(renderArea);
-      viewerRef.current = viewer;
-
-      // Apply configuration
-      viewer.setEDLEnabled(mergedConfig.edlEnabled);
-      if (mergedConfig.edlEnabled) {
-        viewer.setEDLRadius(mergedConfig.edlRadius);
-        viewer.setEDLStrength(mergedConfig.edlStrength);
-      }
-      viewer.setFOV(mergedConfig.fov);
-      viewer.setPointBudget(mergedConfig.pointBudget);
-      viewer.setBackground(mergedConfig.background);
       viewer.loadSettingsFromURL();
 
-      // Set controls
-      const controlsKey = CONTROL_TYPE_MAP[mergedConfig.controls];
-      viewer.setControls(viewer[controlsKey]);
+      // Set controls (skip if using Cesium - Cesium handles navigation)
+      if (!includeCesium) {
+        viewer.setControls(viewer.earthControls);
+      }
 
-      // Load GUI if enabled
-      if (mergedConfig.showGUI) {
+      // Load GUI
+      if (c.showGUI !== false) {
         viewer.loadGUI(() => {
-          viewer.setLanguage(mergedConfig.language);
-
-          // Show common menu sections
-          if (typeof window.$ !== 'undefined') {
-            window.$('#menu_tools').next().show();
-            window.$('#menu_clipping').next().show();
-          }
-
+          viewer.setLanguage('en');
+          // Show tools menus
+          window.$?.('#menu_tools')?.next()?.show();
+          window.$?.('#menu_clipping')?.next()?.show();
           // Toggle sidebar if needed
-          if (!mergedConfig.showSidebar) {
+          if (c.showSidebar === false) {
             viewer.toggleSidebar();
           }
         });
       }
 
-      // Mark as rendered
-      renderArea.setAttribute('data-potree-render', 'true');
-
-      // Update store
       setViewer(viewer);
 
-      // Load initial point clouds
-      for (const pcConfig of pointClouds) {
-        try {
-          await loadPointCloud(pcConfig);
-        } catch (err) {
-          console.error(`Failed to load point cloud: ${pcConfig.name}`, err);
-          onError?.(err instanceof Error ? err : new Error(String(err)));
-        }
+      // Load point clouds
+      pointClouds.forEach((pc) => {
+        window.Potree.loadPointCloud(pc.url, pc.name, (result) => {
+          const cloud = result.pointcloud;
+
+          if (pc.position) {
+            cloud.position.x = pc.position.x ?? 0;
+            cloud.position.y = pc.position.y ?? 0;
+            cloud.position.z = pc.position.z ?? 0;
+          }
+          if (pc.visible !== undefined) cloud.visible = pc.visible;
+
+          viewer.scene.addPointCloud(cloud);
+          viewer.fitToScreen();
+        });
+      });
+
+        // Defer onReady to allow Potree to fully initialize
+        requestAnimationFrame(() => {
+          onReady?.(viewer);
+        });
+      } catch (e) {
+        onError?.(e instanceof Error ? e : new Error(String(e)));
       }
+    }, 0);
 
-      // Fit to screen after loading
-      if (pointClouds.length > 0) {
-        viewer.fitToScreen();
-      }
-
-      // Notify ready
-      onReady?.(viewer);
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setError(error);
-      onError?.(error);
-      initRef.current = false;
-    }
-  }, [
-    scriptsLoaded,
-    renderAreaId,
-    mergedConfig,
-    pointClouds,
-    loadPointCloud,
-    setViewer,
-    setError,
-    onReady,
-    onError,
-  ]);
-
-  // Initialize when scripts are loaded
-  useEffect(() => {
-    if (scriptsLoaded) {
-      initializeViewer();
-    }
-  }, [scriptsLoaded, initializeViewer]);
-
-  // Cleanup on unmount
-  useEffect(() => {
+    // Cleanup
     return () => {
-      if (viewerRef.current) {
-        // Potree doesn't have a built-in destroy method, but we can clean up
-        viewerRef.current = null;
-        setViewer(null);
+      clearTimeout(initTimeout);
+
+      // Clear render area
+      if (renderAreaRef.current) {
+        renderAreaRef.current.innerHTML = '';
       }
+      // Clear sidebar
+      const sidebar = document.getElementById(idsRef.current.sidebar);
+      if (sidebar) sidebar.innerHTML = '';
+
+      viewerRef.current = null;
+      initedRef.current = false;
+      setViewer(null);
     };
-  }, [setViewer]);
+  }, [scriptsLoaded, config, pointClouds, includeCesium, onReady, onError, setViewer]);
+
+  const containerStyle: CSSProperties = {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    ...style,
+  };
+
+  const renderAreaStyle: CSSProperties = {
+    position: 'absolute',
+    inset: 0,
+    zIndex: includeCesium ? 1 : 0,
+  };
+
+  const cesiumStyle: CSSProperties = {
+    position: 'absolute',
+    inset: 0,
+    zIndex: 0,
+  };
 
   return (
-    <PotreeContainer
-      ref={containerRef}
-      renderAreaId={renderAreaId}
-      className={className}
-      style={style}
-      includeCesium={includeCesium}
-    >
-      {children}
-    </PotreeContainer>
+    <div className={className} style={containerStyle}>
+      {/* Cesium container (behind Potree) */}
+      {includeCesium && (
+        <div id={idsRef.current.cesium} style={cesiumStyle} />
+      )}
+
+      {/* Potree render area */}
+      <div ref={renderAreaRef} id={idsRef.current.render} style={renderAreaStyle}>
+        {children}
+      </div>
+
+      {/* Sidebar container */}
+      <div id={idsRef.current.sidebar} />
+    </div>
   );
 }
 
-export default PotreeViewer;
+// Export the cesium container ID getter for CesiumViewer
+export function usePotreeIds() {
+  const idsRef = useRef({ render: genId(), sidebar: genId(), cesium: genId() });
+  return idsRef.current;
+}
