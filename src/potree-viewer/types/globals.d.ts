@@ -60,6 +60,35 @@ declare namespace THREE {
 
 declare namespace TWEEN {
   function update(time?: number): boolean;
+
+  class Tween<T> {
+    constructor(object: T);
+    to(target: Partial<T>, duration: number): this;
+    easing(fn: (k: number) => number): this;
+    onUpdate(callback: () => void): this;
+    onComplete(callback: () => void): this;
+    start(): this;
+    stop(): this;
+  }
+
+  const Easing: {
+    Linear: { None: (k: number) => number };
+    Quadratic: {
+      In: (k: number) => number;
+      Out: (k: number) => number;
+      InOut: (k: number) => number;
+    };
+    Cubic: {
+      In: (k: number) => number;
+      Out: (k: number) => number;
+      InOut: (k: number) => number;
+    };
+    Exponential: {
+      In: (k: number) => number;
+      Out: (k: number) => number;
+      InOut: (k: number) => number;
+    };
+  };
 }
 
 declare namespace Potree {
@@ -80,6 +109,9 @@ declare namespace Potree {
 
   interface View {
     position: THREE.Vector3;
+    yaw: number;
+    pitch: number;
+    radius: number;
     getPivot: () => THREE.Vector3;
   }
 
@@ -106,6 +138,11 @@ declare namespace Potree {
     loadSettingsFromURL(): void;
     loadGUI(callback?: () => void): void;
     fitToScreen(): void;
+    zoomTo(
+      node: PointCloudOctree | { boundingBox: THREE.Box3 },
+      factor?: number,
+      animationDuration?: number,
+    ): void;
   }
 
   interface Scene {
