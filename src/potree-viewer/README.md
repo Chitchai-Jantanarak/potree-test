@@ -1,259 +1,157 @@
 # Potree Viewer
 
-A React component for visualizing point clouds with Potree and Cesium integration, designed for flood simulation and geospatial applications.
-
-## Installation
-
-The potree-viewer is included in the project. Ensure the `public/potree-static` folder contains the Potree and Cesium libraries.
+provider for calling potree module script set on public/potree-static
 
 ## Quick Start
 
 ```tsx
-import { PotreeViewer } from "@/potree-viewer";
+import { PotreeViewer, usePointCloudLoader, type PointCloudSource } from "@/potree-viewer";
 
-export default function MapPage() {
-  const handleReady = (viewer: Potree.Viewer) => {
-    // Load point cloud externally
-    window.Potree.loadPointCloud(
-      "https://example.com/pointcloud/ept.json",
-      "MyPointCloud",
-      (result) => {
-        const pointcloud = result.pointcloud;
-        pointcloud.material.size = 0.6;
-        pointcloud.material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
-        pointcloud.material.activeAttributeName = "elevation";
-        
-        viewer.scene.addPointCloud(pointcloud);
-        viewer.fitToScreen();
-      }
-    );
-  };
+const POINT_CLOUDS: PointCloudSource[] = [
+  { id: "sf", name: "San Francisco", url: "https://example.com/sf/ept.json" },
+  { id: "ny", name: "New York", url: "https://example.com/ny/ept.json" },
+];
+
+function PointCloudControls({ sources }: { sources: PointCloudSource[] }) {
+  const { loadPointClouds, flyTo, fitAll } = usePointCloudLoader();
+
+  useEffect(() => {
+    loadPointClouds(sources).then(() => flyTo(sources[0].id));
+  }, []);
 
   return (
-    <div className="h-screen w-screen">
-      <PotreeViewer
-        cesium={{ enabled: true, projection: "mercator" }}
-        sidebar
-        onReady={handleReady}
-      />
+    <div>
+      {sources.map((s) => (
+        <button key={s.id} onClick={() => flyTo(s.id)}>{s.name}</button>
+      ))}
+      <button onClick={fitAll}>Fit All</button>
     </div>
   );
 }
-```
 
-## Point Cloud + Cesium Alignment Guide
-
-When using Potree with Cesium, proper coordinate alignment is critical. The point cloud and Cesium globe must use the same coordinate reference system.
-
-### Understanding Projections
-
-Point cloud data is typically stored in projected coordinates. You must configure the correct projection for your data:
-
-| Projection | Description | Use Case |
-|------------|-------------|----------|
-| `mercator` | Web Mercator (EPSG:3857) | Web map data, most online point clouds |
-| `utm10` | UTM Zone 10 | US West Coast (California, Oregon, Washington) |
-| `utm47` | UTM Zone 47 | Thailand West (96° to 102°) |
-| `utm48` | UTM Zone 48 | Thailand East (102° to 108°) |
-
-### Configuring the Projection
-
-```tsx
-// San Francisco data (Web Mercator)
-<PotreeViewer
-  cesium={{ projection: "mercator", mapProvider: "esri" }}
-  onReady={handleReady}
-/>
-
-// Thailand data (UTM Zone 47)
-<PotreeViewer
-  cesium={{ projection: "utm47", mapProvider: "osm" }}
-  onReady={handleReady}
-/>
-```
-
-### Adjusting Elevation Offset
-
-Point cloud Z values may not match Cesium's ellipsoid height. Use `offsetZ` to adjust:
-
-```tsx
-<PotreeViewer
-  cesium={{ 
-    projection: "utm47", 
-    offsetZ: -30,  // Negative: lower the point cloud
-                   // Positive: raise the point cloud
-    mapProvider: "esri" 
-  }}
-  onReady={handleReady}
-/>
-```
-
-**How to find the correct offset:**
-1. Load your point cloud
-2. Click "Log Position" to see current camera coordinates
-3. Compare Z value with expected ground elevation
-4. Adjust `offsetZ` until the point cloud sits correctly on terrain
-
-### Point Cloud Material Settings
-
-Configure how points are rendered:
-
-```tsx
-const handleReady = (viewer: Potree.Viewer) => {
-  window.Potree.loadPointCloud(url, name, (result) => {
-    const material = result.pointcloud.material;
-    
-    // Point size
-    material.size = 0.6;  // Adjust for density
-    
-    // Size type
-    material.pointSizeType = Potree.PointSizeType.ADAPTIVE;  // Auto-adjust
-    // or: Potree.PointSizeType.FIXED
-    // or: Potree.PointSizeType.ATTENUATED
-    
-    // Point shape
-    material.shape = Potree.PointShape.SQUARE;  // Fastest
-    // or: Potree.PointShape.CIRCLE
-    // or: Potree.PointShape.PARABOLOID
-    
-    // Coloring attribute
-    material.activeAttributeName = "elevation";  // Color by height
-    // or: "rgba"          - Original colors (if available)
-    // or: "intensity"     - LiDAR intensity
-    // or: "classification" - Point classification
-    
-    viewer.scene.addPointCloud(result.pointcloud);
-    viewer.fitToScreen();
-  });
-};
-```
-
-## Usage Examples
-
-### Basic Viewer (Potree Only, No Cesium)
-
-```tsx
-<PotreeViewer
-  config={{
-    fov: 60,
-    pointBudget: 1_000_000,
-    controls: "orbit",
-  }}
-  onReady={(viewer) => {
-    // Load point cloud without Cesium globe
-  }}
-/>
-```
-
-### With Cesium Globe
-
-```tsx
-<PotreeViewer
-  cesium={{
-    enabled: true,
-    projection: "mercator",
-    mapProvider: "esri",
-    offsetZ: 0,
-  }}
-  sidebar
-  onReady={handleReady}
-/>
-```
-
-### Using Variants
-
-```tsx
-import { PotreeViewer, type PotreeViewerVariant } from "@/potree-viewer";
-
-// Preset variants
-<PotreeViewer variant="flood-simulation" onReady={handleReady} />
-<PotreeViewer variant="terrain-analysis" onReady={handleReady} />
-<PotreeViewer variant="minimal" onReady={handleReady} />
-
-// Variant with overrides
-<PotreeViewer
-  variant="flood-simulation"
-  cesium={{ projection: "mercator", mapProvider: "esri" }}
-  onReady={handleReady}
-/>
-```
-
-### Accessing Viewer from Child Components
-
-```tsx
-import { usePotreeStore } from "@/potree-viewer";
-
-function ChildComponent() {
-  const viewer = usePotreeStore((s) => s.viewer);
-  const cesiumViewer = usePotreeStore((s) => s.cesiumViewer);
-
-  const flyTo = (lon: number, lat: number, height: number) => {
-    if (cesiumViewer && window.Cesium) {
-      cesiumViewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(lon, lat, height),
-        duration: 2,
-      });
-    }
-  };
+export default function MapPage() {
+  const [ready, setReady] = useState(false);
 
   return (
-    <button onClick={() => flyTo(100.5, 13.75, 50000)}>
-      Fly to Thailand
-    </button>
+    <PotreeViewer
+      cesium={{ projection: "mercator", mapProvider: "esri" }}
+      sidebar
+      onReady={() => setReady(true)}
+    >
+      {ready && <PointCloudControls sources={POINT_CLOUDS} />}
+    </PotreeViewer>
   );
 }
-
-// Use inside PotreeViewer
-<PotreeViewer cesium={{ projection: "utm47" }} onReady={handleReady}>
-  <ChildComponent />
-</PotreeViewer>
 ```
 
-## Props
+## usePointCloudLoader Hook
 
-### PotreeViewerProps
+Manages loading and navigation for multiple point clouds.
+
+```tsx
+const {
+  pointClouds,      // Map<string, LoadedPointCloud>
+  loadingStates,    // Record<string, boolean>
+  loadPointCloud,   // (source, options?) => Promise<LoadedPointCloud | null>
+  loadPointClouds,  // (sources, options?) => Promise<void>
+  flyTo,            // (id, factor?, duration?) => void
+  fitAll,           // () => void
+  getPointCloud,    // (id) => LoadedPointCloud | undefined
+} = usePointCloudLoader();
+```
+
+### PointCloudSource
+
+```tsx
+interface PointCloudSource {
+  id: string;
+  name: string;
+  url: string;
+}
+```
+
+### PointCloudMaterialOptions
+
+```tsx
+interface PointCloudMaterialOptions {
+  size?: number;                    // default: 0.6
+  pointSizeType?: "fixed" | "adaptive" | "attenuated";
+  shape?: "square" | "circle" | "paraboloid";
+  activeAttributeName?: string;     // "elevation", "rgba", "intensity", "classification"
+}
+```
+
+### LoadedPointCloud
+
+```tsx
+interface LoadedPointCloud {
+  id: string;
+  name: string;
+  pointcloud: Potree.PointCloudOctree;
+  center: { x: number; y: number; z: number };
+  size: number;
+}
+```
+
+## PotreeViewer Props
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `variant` | `PotreeViewerVariant` | - | Preset configuration variant |
-| `containerId` | `string` | `"potree_render_area"` | Container element ID |
-| `config` | `Partial<PotreeViewerConfig>` | - | Viewer configuration |
-| `cesium` | `Partial<CesiumConfig>` | - | Cesium configuration |
-| `sidebar` | `boolean` | `false` | Show Potree sidebar GUI |
-| `className` | `string` | - | Additional CSS classes |
-| `onReady` | `(viewer, cesium?) => void` | - | Callback when ready - load point clouds here |
+| `variant` | `PotreeViewerVariant` | - | Preset configuration |
+| `config` | `Partial<PotreeViewerConfig>` | - | Viewer settings |
+| `cesium` | `Partial<CesiumConfig>` | - | Cesium settings |
+| `sidebar` | `boolean` | `false` | Show Potree sidebar |
+| `onReady` | `(viewer, cesium?) => void` | - | Ready callback |
 | `onError` | `(error) => void` | - | Error callback |
 
-### PotreeViewerConfig
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `fov` | `number` | `60` | Field of view |
-| `pointBudget` | `number` | `1_000_000` | Maximum points to render |
-| `edlEnabled` | `boolean` | `true` | Eye-Dome Lighting |
-| `edlRadius` | `number` | `1.4` | EDL radius |
-| `edlStrength` | `number` | `0.4` | EDL strength |
-| `background` | `BackgroundType` | `null` | Background type |
-| `controls` | `ControlType` | `"orbit"` | Control type |
-| `showSidebar` | `boolean` | `true` | Show sidebar |
-
-### CesiumConfig
+## CesiumConfig
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enabled` | `boolean` | `true` | Enable Cesium globe |
-| `projection` | `Projection` | `"mercator"` | Coordinate projection for transformation |
+| `projection` | `Projection` | `"mercator"` | Coordinate projection |
 | `offsetZ` | `number` | `0` | Elevation offset (meters) |
 | `mapProvider` | `MapProvider` | `"osm"` | Map tile provider |
+
+### Projections
+
+| Projection | Description |
+|------------|-------------|
+| `mercator` | Web Mercator (EPSG:3857) - most online point clouds |
+| `utm10` | UTM Zone 10 - US West Coast |
+| `utm47` | UTM Zone 47 - Thailand West |
+| `utm48` | UTM Zone 48 - Thailand East |
+
+### Map Providers
+
+| Provider | Description |
+|----------|-------------|
+| `osm` | OpenStreetMap |
+| `esri` | ESRI Satellite Imagery |
+| `carto-voyager` | Carto Voyager |
+| `carto-positron` | Carto Positron (light) |
+| `carto-dark` | Carto Dark |
+
+## PotreeViewerConfig
+
+| Option | Type | Default |
+|--------|------|---------|
+| `fov` | `number` | `60` |
+| `pointBudget` | `number` | `1_000_000` |
+| `edlEnabled` | `boolean` | `true` |
+| `edlRadius` | `number` | `1.4` |
+| `edlStrength` | `number` | `0.4` |
+| `background` | `BackgroundType` | `null` |
+| `controls` | `ControlType` | `"orbit"` |
 
 ## Variants
 
 | Variant | Description |
 |---------|-------------|
-| `flood-simulation` | Optimized for flood analysis with Cesium, sidebar, orbit controls |
-| `terrain-analysis` | High-quality rendering with enhanced EDL |
-| `minimal` | Basic viewer without Cesium or sidebar |
-| `presentation` | High point budget with dark theme |
+| `flood-simulation` | Cesium + sidebar + orbit controls |
+| `terrain-analysis` | High-quality EDL rendering |
+| `minimal` | No Cesium or sidebar |
+| `presentation` | High point budget + dark theme |
 
 ## Mouse Controls
 
@@ -264,57 +162,26 @@ function ChildComponent() {
 | Zoom | Scroll wheel |
 | Zoom to point | Double-click |
 
-## Map Providers
-
-| Provider | Description |
-|----------|-------------|
-| `osm` | OpenStreetMap |
-| `esri` | ESRI Satellite Imagery |
-| `carto-voyager` | Carto Voyager |
-| `carto-voyager-nolabels` | Carto Voyager (no labels) |
-| `carto-positron` | Carto Positron (light) |
-| `carto-positron-nolabels` | Carto Positron (no labels) |
-| `carto-dark` | Carto Dark |
-| `carto-dark-nolabels` | Carto Dark (no labels) |
-
 ## Project Structure
 
 ```
 src/potree-viewer/
-├── index.ts              # Public exports
-├── PotreeViewer.tsx      # Main component
-├── store.tsx             # Zustand store with provider
-├── constants.ts          # Configuration constants
-├── styles.css            # Essential CSS
-├── variants.ts           # Preset configurations
+├── index.ts
+├── PotreeViewer.tsx
+├── store.tsx
+├── constants.ts
+├── variants.ts
+├── styles.css
 ├── types/
-│   ├── index.ts          # Public types
-│   └── globals.d.ts      # Global window types
+│   ├── index.ts
+│   └── globals.d.ts
 ├── hooks/
-│   ├── index.ts          # Hook exports
-│   └── usePotreeViewer.ts
+│   ├── index.ts
+│   ├── usePotreeViewer.ts
+│   └── usePointCloudLoader.ts
 └── _internal/
     ├── ScriptLoader.tsx
     ├── ViewerContainer.tsx
     ├── ViewerInitializer.tsx
     └── CesiumLayer.tsx
 ```
-
-## Troubleshooting
-
-### Point cloud not visible
-- Check browser console for errors
-- Verify point cloud URL is accessible (CORS enabled)
-- Ensure `onReady` callback loads the point cloud
-
-### Point cloud floating above/below terrain
-- Adjust `offsetZ` in cesium config
-- Verify correct projection is set for your data
-
-### Cesium not showing
-- Check that `cesium.enabled` is not `false`
-- Verify Cesium libraries are in `public/potree-static/lib/Cesium/`
-
-### Sidebar not appearing
-- Set `sidebar={true}` prop
-- Check that potree.css is loaded
