@@ -1,6 +1,12 @@
 export { PotreeViewer } from "./PotreeViewer";
 export { PotreeProvider, usePotreeStore, usePotreeStoreApi } from "./store";
-export { usePotreeViewer } from "./hooks";
+export {
+  usePotreeViewer,
+  usePointCloudLoader,
+  type PointCloudSource,
+  type PointCloudMaterialOptions,
+  type LoadedPointCloud,
+} from "./hooks";
 
 export {
   VARIANTS,
