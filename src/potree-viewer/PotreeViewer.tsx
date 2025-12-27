@@ -45,9 +45,8 @@ export function PotreeViewer({
     >
       <PotreeProvider
         containerId={containerId}
-        zone={merged.cesium?.zone}
+        projection={merged.cesium?.projection}
         offsetZ={merged.cesium?.offsetZ}
-        position={merged.cesium?.position}
       >
         <ScriptLoader includeCesium={hasCesium} onError={onError}>
           <ViewerContainer hasCesium={hasCesium} sidebar={showSidebar}>

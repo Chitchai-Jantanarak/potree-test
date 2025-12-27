@@ -32,7 +32,7 @@ export default function MapPage() {
   return (
     <div className="h-screen w-screen">
       <PotreeViewer
-        cesium={{ enabled: true, zone: "47" }}
+        cesium={{ enabled: true, projection: "mercator" }}
         sidebar
         onReady={handleReady}
       />
@@ -45,28 +45,29 @@ export default function MapPage() {
 
 When using Potree with Cesium, proper coordinate alignment is critical. The point cloud and Cesium globe must use the same coordinate reference system.
 
-### Understanding UTM Zones
+### Understanding Projections
 
-Point cloud data is typically stored in UTM (Universal Transverse Mercator) coordinates. You must configure the correct UTM zone for your data:
+Point cloud data is typically stored in projected coordinates. You must configure the correct projection for your data:
 
-| Zone | Region | Longitude Range |
-|------|--------|-----------------|
-| `10` | US West Coast (California, Oregon, Washington) | -126° to -120° |
-| `47` | Thailand West | 96° to 102° |
-| `48` | Thailand East | 102° to 108° |
+| Projection | Description | Use Case |
+|------------|-------------|----------|
+| `mercator` | Web Mercator (EPSG:3857) | Web map data, most online point clouds |
+| `utm10` | UTM Zone 10 | US West Coast (California, Oregon, Washington) |
+| `utm47` | UTM Zone 47 | Thailand West (96° to 102°) |
+| `utm48` | UTM Zone 48 | Thailand East (102° to 108°) |
 
-### Configuring the Zone
+### Configuring the Projection
 
 ```tsx
-// San Francisco data (UTM Zone 10)
+// San Francisco data (Web Mercator)
 <PotreeViewer
-  cesium={{ zone: "10", mapProvider: "esri" }}
+  cesium={{ projection: "mercator", mapProvider: "esri" }}
   onReady={handleReady}
 />
 
 // Thailand data (UTM Zone 47)
 <PotreeViewer
-  cesium={{ zone: "47", mapProvider: "osm" }}
+  cesium={{ projection: "utm47", mapProvider: "osm" }}
   onReady={handleReady}
 />
 ```
@@ -78,7 +79,7 @@ Point cloud Z values may not match Cesium's ellipsoid height. Use `offsetZ` to a
 ```tsx
 <PotreeViewer
   cesium={{ 
-    zone: "47", 
+    projection: "utm47", 
     offsetZ: -30,  // Negative: lower the point cloud
                    // Positive: raise the point cloud
     mapProvider: "esri" 
@@ -150,7 +151,7 @@ const handleReady = (viewer: Potree.Viewer) => {
 <PotreeViewer
   cesium={{
     enabled: true,
-    zone: "47",
+    projection: "mercator",
     mapProvider: "esri",
     offsetZ: 0,
   }}
@@ -172,7 +173,7 @@ import { PotreeViewer, type PotreeViewerVariant } from "@/potree-viewer";
 // Variant with overrides
 <PotreeViewer
   variant="flood-simulation"
-  cesium={{ zone: "10", mapProvider: "esri" }}
+  cesium={{ projection: "mercator", mapProvider: "esri" }}
   onReady={handleReady}
 />
 ```
@@ -203,7 +204,7 @@ function ChildComponent() {
 }
 
 // Use inside PotreeViewer
-<PotreeViewer cesium={{ zone: "47" }} onReady={handleReady}>
+<PotreeViewer cesium={{ projection: "utm47" }} onReady={handleReady}>
   <ChildComponent />
 </PotreeViewer>
 ```
@@ -241,7 +242,7 @@ function ChildComponent() {
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enabled` | `boolean` | `true` | Enable Cesium globe |
-| `zone` | `"10" \| "47" \| "48"` | `"47"` | UTM zone for coordinate transformation |
+| `projection` | `Projection` | `"mercator"` | Coordinate projection for transformation |
 | `offsetZ` | `number` | `0` | Elevation offset (meters) |
 | `mapProvider` | `MapProvider` | `"osm"` | Map tile provider |
 
@@ -308,7 +309,7 @@ src/potree-viewer/
 
 ### Point cloud floating above/below terrain
 - Adjust `offsetZ` in cesium config
-- Verify correct UTM zone is set
+- Verify correct projection is set for your data
 
 ### Cesium not showing
 - Check that `cesium.enabled` is not `false`

@@ -56,13 +56,11 @@ export default function DemoPage() {
   return (
     <div className="relative h-screen w-screen">
       <PotreeViewer
-        variant="flood-simulation"
+        variant=""
         sidebar
         cesium={{
-          zone: "10",
-          mapProvider: "esri",
-          position: { longitude: -122.4194, latitude: 37.7749, height: 0 },
-          offsetZ: -150,
+          projection: "mercator",
+          mapProvider: "osm",
         }}
         onReady={handleReady}
       >

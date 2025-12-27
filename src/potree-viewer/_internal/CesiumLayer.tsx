@@ -7,10 +7,10 @@ import {
   CESIUM_BASE_PATH,
   DEFAULT_CESIUM_CONFIG,
   MAP_PROVIDERS,
-  UTM_ZONES,
+  PROJECTIONS,
   WGS84,
 } from "../constants";
-import type { CesiumConfig, GeoPosition } from "../types";
+import type { CesiumConfig } from "../types";
 
 interface CesiumLayerProps {
   config: Partial<CesiumConfig>;
@@ -20,9 +20,8 @@ interface CesiumLayerProps {
 export function CesiumLayer({ config, onReady }: CesiumLayerProps): null {
   const viewer = usePotreeStore((s) => s.viewer);
   const containerId = usePotreeStore((s) => s.containerId);
-  const zone = usePotreeStore((s) => s.zone);
+  const projection = usePotreeStore((s) => s.projection);
   const offsetZ = usePotreeStore((s) => s.offsetZ);
-  const position = usePotreeStore((s) => s.position);
   const setCesiumViewer = usePotreeStore((s) => s.setCesiumViewer);
 
   const cesiumRef = useRef<Cesium.Viewer | null>(null);
@@ -73,22 +72,8 @@ export function CesiumLayer({ config, onReady }: CesiumLayerProps): null {
 
     Cesium.buildModuleUrl.setBaseUrl(`${CESIUM_BASE_PATH}/`);
 
-    const pointcloudProjection = UTM_ZONES[zone].proj4;
-    const toMap = proj4(pointcloudProjection, WGS84);
-
-    // Reference position for point cloud placement on globe
-    const geoRef: GeoPosition = position || {
-      longitude: 0,
-      latitude: 0,
-      height: 0,
-    };
-    const hasFixedPosition = position !== null;
-
-    // Point cloud origin cache (updated dynamically in render loop)
-    let pcOriginX = 0;
-    let pcOriginY = 0;
-    let pcOriginZ = 0;
-    let pcOriginInitialized = false;
+    const projectionConfig = PROJECTIONS[projection] || PROJECTIONS.mercator;
+    const toMap = proj4(projectionConfig.proj4, WGS84);
 
     const mapCfg = MAP_PROVIDERS[cfg.mapProvider || "osm"] || MAP_PROVIDERS.osm;
     let imageryProvider: Cesium.ImageryProvider;
@@ -148,22 +133,6 @@ export function CesiumLayer({ config, onReady }: CesiumLayerProps): null {
         return;
       }
 
-      // Update point cloud origin when point cloud is loaded
-      if (
-        hasFixedPosition &&
-        !pcOriginInitialized &&
-        viewer.scene.pointclouds.length > 0
-      ) {
-        const pc = viewer.scene.pointclouds[0];
-        const bbox = pc.boundingBox;
-        if (bbox) {
-          pcOriginX = (bbox.min.x + bbox.max.x) / 2;
-          pcOriginY = (bbox.min.y + bbox.max.y) / 2;
-          pcOriginZ = bbox.min.z;
-          pcOriginInitialized = true;
-        }
-      }
-
       const pPos = new THREE.Vector3(0, 0, 0).applyMatrix4(camera.matrixWorld);
       const pUp = new THREE.Vector3(0, 600, 0).applyMatrix4(camera.matrixWorld);
       const pTarget = viewer.scene.view.getPivot();
@@ -173,37 +142,18 @@ export function CesiumLayer({ config, onReady }: CesiumLayerProps): null {
           return null;
         }
 
-        let lon: number;
-        let lat: number;
-        let height: number;
+        // Camera position is in the point cloud's coordinate system
+        // Convert directly using the configured projection
+        const xy: [number, number] = [pos.x, pos.y];
+        const deg = toMap.forward(xy);
 
-        if (hasFixedPosition) {
-          // Convert local offset to geographic offset
-          // 1 degree latitude ~ 111320 meters
-          // 1 degree longitude ~ 111320 * cos(lat) meters
-          const metersPerDegreeLat = 111320;
-          const metersPerDegreeLon =
-            111320 * Math.cos((geoRef.latitude * Math.PI) / 180);
-
-          // Calculate offset from point cloud origin
-          const offsetX = pos.x - pcOriginX;
-          const offsetY = pos.y - pcOriginY;
-          const offsetHeight = pos.z - pcOriginZ;
-
-          lon = geoRef.longitude + offsetX / metersPerDegreeLon;
-          lat = geoRef.latitude + offsetY / metersPerDegreeLat;
-          height = (geoRef.height || 0) + offsetHeight + offsetZ;
-        } else {
-          // Use UTM projection
-          const xy: [number, number] = [pos.x, pos.y];
-          const deg = toMap.forward(xy);
-          if (!isFinite(deg[0]) || !isFinite(deg[1])) {
-            return null;
-          }
-          lon = deg[0];
-          lat = deg[1];
-          height = pos.z - 30 + offsetZ;
+        if (!isFinite(deg[0]) || !isFinite(deg[1])) {
+          return null;
         }
+
+        const lon = deg[0];
+        const lat = deg[1];
+        const height = pos.z + offsetZ;
 
         if (lon < -180 || lon > 180 || lat < -90 || lat > 90) {
           return null;
@@ -283,15 +233,7 @@ export function CesiumLayer({ config, onReady }: CesiumLayerProps): null {
       setCesiumViewer(null);
       initializedRef.current = false;
     };
-  }, [
-    viewer,
-    cesiumId,
-    cfg.mapProvider,
-    zone,
-    offsetZ,
-    position,
-    setCesiumViewer,
-  ]);
+  }, [viewer, cesiumId, cfg.mapProvider, projection, offsetZ, setCesiumViewer]);
 
   return null;
 }

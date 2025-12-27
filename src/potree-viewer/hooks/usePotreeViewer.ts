@@ -1,6 +1,7 @@
 "use client";
 
 import { usePotreeStore } from "../store";
+import type { Projection } from "../types";
 
 export interface UsePotreeViewerReturn {
   viewer: Potree.Viewer | null;
@@ -8,7 +9,7 @@ export interface UsePotreeViewerReturn {
   scriptsLoaded: boolean;
   isReady: boolean;
   containerId: string;
-  zone: string;
+  projection: Projection;
   offsetZ: number;
 }
 
@@ -17,7 +18,7 @@ export function usePotreeViewer(): UsePotreeViewerReturn {
   const cesiumViewer = usePotreeStore((s) => s.cesiumViewer);
   const scriptsLoaded = usePotreeStore((s) => s.scriptsLoaded);
   const containerId = usePotreeStore((s) => s.containerId);
-  const zone = usePotreeStore((s) => s.zone);
+  const projection = usePotreeStore((s) => s.projection);
   const offsetZ = usePotreeStore((s) => s.offsetZ);
 
   return {
@@ -26,7 +27,7 @@ export function usePotreeViewer(): UsePotreeViewerReturn {
     scriptsLoaded,
     isReady: scriptsLoaded && viewer !== null,
     containerId,
-    zone,
+    projection,
     offsetZ,
   };
 }

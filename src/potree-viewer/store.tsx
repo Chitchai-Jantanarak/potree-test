@@ -2,13 +2,12 @@
 
 import { createContext, useContext, useRef, type ReactNode } from "react";
 import { createStore, useStore, type StoreApi } from "zustand";
-import type { PotreeStoreState, UTMZone, GeoPosition } from "./types";
+import type { PotreeStoreState, Projection } from "./types";
 
 interface StoreProps {
   containerId?: string;
-  zone?: UTMZone;
+  projection?: Projection;
   offsetZ?: number;
-  position?: GeoPosition;
 }
 
 function createPotreeStore(props: StoreProps = {}): StoreApi<PotreeStoreState> {
@@ -17,9 +16,8 @@ function createPotreeStore(props: StoreProps = {}): StoreApi<PotreeStoreState> {
     cesiumViewer: null,
     scriptsLoaded: false,
     containerId: props.containerId ?? "potree_render_area",
-    zone: props.zone ?? "10",
+    projection: props.projection ?? "mercator",
     offsetZ: props.offsetZ ?? 0,
-    position: props.position ?? null,
     setViewer: (viewer) => set({ viewer }),
     setCesiumViewer: (cesiumViewer) => set({ cesiumViewer }),
     setScriptsLoaded: (scriptsLoaded) => set({ scriptsLoaded }),
@@ -35,17 +33,15 @@ interface ProviderProps extends StoreProps {
 export function PotreeProvider({
   children,
   containerId,
-  zone,
+  projection,
   offsetZ,
-  position,
 }: ProviderProps): ReactNode {
   const storeRef = useRef<StoreApi<PotreeStoreState> | null>(null);
   if (storeRef.current === null) {
     storeRef.current = createPotreeStore({
       containerId,
-      zone,
+      projection,
       offsetZ,
-      position,
     });
   }
   return (

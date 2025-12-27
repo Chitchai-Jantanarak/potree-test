@@ -2,7 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 
-export type UTMZone = "10" | "47" | "48";
+export type Projection = "mercator" | "utm10" | "utm47" | "utm48";
 export type BackgroundType = "skybox" | "gradient" | "black" | "white" | null;
 export type ControlType = "orbit" | "earth" | "fly";
 export type MapProvider =
@@ -20,8 +20,7 @@ export interface MapProviderConfig {
   url: string;
 }
 
-export interface UTMZoneConfig {
-  centralMeridian: number;
+export interface ProjectionConfig {
   proj4: string;
 }
 
@@ -36,18 +35,11 @@ export interface PotreeViewerConfig {
   moveSpeed: number;
 }
 
-export interface GeoPosition {
-  longitude: number;
-  latitude: number;
-  height?: number;
-}
-
 export interface CesiumConfig {
   enabled: boolean;
-  zone: UTMZone;
+  projection: Projection;
   offsetZ: number;
   mapProvider: MapProvider;
-  position?: GeoPosition;
 }
 
 export interface PotreeViewerProps {
@@ -68,9 +60,8 @@ export interface PotreeStoreState {
   cesiumViewer: Cesium.Viewer | null;
   scriptsLoaded: boolean;
   containerId: string;
-  zone: UTMZone;
+  projection: Projection;
   offsetZ: number;
-  position: GeoPosition | null;
   setViewer: (viewer: Potree.Viewer | null) => void;
   setCesiumViewer: (viewer: Cesium.Viewer | null) => void;
   setScriptsLoaded: (loaded: boolean) => void;

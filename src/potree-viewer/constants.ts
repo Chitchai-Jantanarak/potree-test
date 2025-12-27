@@ -2,7 +2,7 @@ import type {
   PotreeViewerConfig,
   CesiumConfig,
   MapProviderConfig,
-  UTMZoneConfig,
+  ProjectionConfig,
 } from "./types";
 
 export const BASE_PATH = "/potree-static";
@@ -26,7 +26,7 @@ export const DEFAULT_VIEWER_CONFIG: PotreeViewerConfig = {
 
 export const DEFAULT_CESIUM_CONFIG: CesiumConfig = {
   enabled: true,
-  zone: "47",
+  projection: "mercator",
   offsetZ: 0,
   mapProvider: "osm",
 };
@@ -93,17 +93,17 @@ export const MAP_PROVIDERS: Record<string, MapProviderConfig> = {
   },
 };
 
-export const UTM_ZONES: Record<string, UTMZoneConfig> = {
-  "10": {
-    centralMeridian: -123,
+export const PROJECTIONS: Record<string, ProjectionConfig> = {
+  mercator: {
+    proj4: "EPSG:3857",
+  },
+  utm10: {
     proj4: "+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs",
   },
-  "47": {
-    centralMeridian: 99,
+  utm47: {
     proj4: "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs",
   },
-  "48": {
-    centralMeridian: 105,
+  utm48: {
     proj4: "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs",
   },
 };
