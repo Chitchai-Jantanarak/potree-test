@@ -19,9 +19,8 @@
       },
     ],
     "paths": {
-      "@/*": ["./*"],
-      "@/potree-viewer": ["./src/potree-viewer"],
-      "@/potree-viewer/*": ["./src/potree-viewer/*"],
+      "@/*": ["./src/*"],
+      "@/potree-viewer": ["./src/components/potree-viewer"],
     },
   },
   "include": [
@@ -34,5 +33,5 @@
     "src/**/*.ts",
     "src/**/*.tsx",
   ],
-  "exclude": ["node_modules", "potree-viewer-callable_version"],
+  "exclude": ["node_modules"],
 }

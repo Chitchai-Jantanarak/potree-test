@@ -144,24 +144,6 @@ interface LoadedPointCloud {
 | `background` | `BackgroundType` | `null` |
 | `controls` | `ControlType` | `"orbit"` |
 
-## Variants
-
-| Variant | Description |
-|---------|-------------|
-| `flood-simulation` | Cesium + sidebar + orbit controls |
-| `terrain-analysis` | High-quality EDL rendering |
-| `minimal` | No Cesium or sidebar |
-| `presentation` | High point budget + dark theme |
-
-## Mouse Controls
-
-| Action | Control |
-|--------|---------|
-| Rotate | Left-drag |
-| Pan | Right-drag |
-| Zoom | Scroll wheel |
-| Zoom to point | Double-click |
-
 ## Project Structure
 
 ```

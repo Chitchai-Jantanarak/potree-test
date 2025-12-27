@@ -62,7 +62,6 @@ export default function CesiumTestPage() {
 
         viewerRef.current = cesiumViewer;
 
-        // Fly to San Francisco to test
         cesiumViewer.camera.flyTo({
           destination: Cesium.Cartesian3.fromDegrees(-122.4194, 37.7749, 50000),
           duration: 2,
@@ -84,16 +83,6 @@ export default function CesiumTestPage() {
 
   return (
     <div className="relative h-screen w-screen">
-      <div className="absolute top-4 left-4 z-10 bg-black/70 text-white p-4 rounded">
-        <h1 className="text-xl font-bold mb-2">Cesium Test Page</h1>
-        <p className="text-sm">Test if Cesium globe controls work properly:</p>
-        <ul className="text-sm mt-2 list-disc list-inside">
-          <li>Left-click + drag: Rotate globe</li>
-          <li>Right-click + drag: Zoom</li>
-          <li>Middle-click + drag: Pan</li>
-          <li>Scroll: Zoom in/out</li>
-        </ul>
-      </div>
       <div ref={containerRef} className="h-full w-full" />
     </div>
   );
