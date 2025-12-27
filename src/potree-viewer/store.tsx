@@ -1,73 +1,52 @@
-'use client';
+"use client";
 
-/**
- * Potree Store - Zustand store with React Context
- */
+import { createContext, useContext, useRef, type ReactNode } from "react";
+import { createStore, useStore, type StoreApi } from "zustand";
+import type { PotreeStoreState, UTMZone, GeoPosition } from "./types";
 
-import { createContext, useContext, useRef, type ReactNode } from 'react';
-import { createStore, useStore, type StoreApi } from 'zustand';
-import type { PotreeStore, UTMZone } from './types';
-
-interface StoreInitialProps {
+interface StoreProps {
   containerId?: string;
-  url?: string;
   zone?: UTMZone;
   offsetZ?: number;
+  position?: GeoPosition;
 }
 
-const createPotreeStore = (initial: StoreInitialProps = {}) =>
-  createStore<PotreeStore>((set) => ({
-    // Viewers
+function createPotreeStore(props: StoreProps = {}): StoreApi<PotreeStoreState> {
+  return createStore<PotreeStoreState>((set) => ({
     viewer: null,
     cesiumViewer: null,
-
-    // Loading states
     scriptsLoaded: false,
-    isLoading: false,
-    error: null,
-
-    // Config with defaults
-    containerId: initial.containerId || 'potree_render_area',
-    url: initial.url || null,
-    zone: initial.zone || '47',
-    offsetZ: initial.offsetZ || 0,
-
-    // Actions
+    containerId: props.containerId ?? "potree_render_area",
+    zone: props.zone ?? "10",
+    offsetZ: props.offsetZ ?? 0,
+    position: props.position ?? null,
     setViewer: (viewer) => set({ viewer }),
     setCesiumViewer: (cesiumViewer) => set({ cesiumViewer }),
     setScriptsLoaded: (scriptsLoaded) => set({ scriptsLoaded }),
-    setLoading: (isLoading) => set({ isLoading }),
-    setError: (error) => set({ error }),
-    setUrl: (url) => set({ url }),
-    setContainerId: (containerId) => set({ containerId }),
-    setZone: (zone) => set({ zone }),
-    setOffsetZ: (offsetZ) => set({ offsetZ }),
-    reset: () =>
-      set({
-        viewer: null,
-        cesiumViewer: null,
-        scriptsLoaded: false,
-        isLoading: false,
-        error: null,
-      }),
   }));
+}
 
-const StoreContext = createContext<StoreApi<PotreeStore> | null>(null);
+const StoreContext = createContext<StoreApi<PotreeStoreState> | null>(null);
 
-interface PotreeProviderProps extends StoreInitialProps {
+interface ProviderProps extends StoreProps {
   children: ReactNode;
 }
 
 export function PotreeProvider({
   children,
   containerId,
-  url,
   zone,
   offsetZ,
-}: PotreeProviderProps) {
-  const storeRef = useRef<StoreApi<PotreeStore> | null>(null);
-  if (!storeRef.current) {
-    storeRef.current = createPotreeStore({ containerId, url, zone, offsetZ });
+  position,
+}: ProviderProps): ReactNode {
+  const storeRef = useRef<StoreApi<PotreeStoreState> | null>(null);
+  if (storeRef.current === null) {
+    storeRef.current = createPotreeStore({
+      containerId,
+      zone,
+      offsetZ,
+      position,
+    });
   }
   return (
     <StoreContext.Provider value={storeRef.current}>
@@ -76,15 +55,16 @@ export function PotreeProvider({
   );
 }
 
-export function usePotreeStore<T>(selector: (s: PotreeStore) => T): T {
+export function usePotreeStore<T>(selector: (state: PotreeStoreState) => T): T {
   const store = useContext(StoreContext);
-  if (!store) throw new Error('usePotreeStore must be within PotreeProvider');
+  if (!store)
+    throw new Error("usePotreeStore must be used within PotreeProvider");
   return useStore(store, selector);
 }
 
-// Direct store access for advanced use cases
-export function usePotreeStoreApi() {
+export function usePotreeStoreApi(): StoreApi<PotreeStoreState> {
   const store = useContext(StoreContext);
-  if (!store) throw new Error('usePotreeStoreApi must be within PotreeProvider');
+  if (!store)
+    throw new Error("usePotreeStoreApi must be used within PotreeProvider");
   return store;
 }

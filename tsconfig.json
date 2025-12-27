@@ -15,14 +15,14 @@
     "incremental": true,
     "plugins": [
       {
-        "name": "next"
-      }
+        "name": "next",
+      },
     ],
     "paths": {
       "@/*": ["./*"],
       "@/potree-viewer": ["./src/potree-viewer"],
-      "@/potree-viewer/*": ["./src/potree-viewer/*"]
-    }
+      "@/potree-viewer/*": ["./src/potree-viewer/*"],
+    },
   },
   "include": [
     "next-env.d.ts",
@@ -32,7 +32,7 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     "src/**/*.ts",
-    "src/**/*.tsx"
+    "src/**/*.tsx",
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "potree-viewer-callable_version"],
 }

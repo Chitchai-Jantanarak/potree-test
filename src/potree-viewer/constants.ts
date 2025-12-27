@@ -1,57 +1,111 @@
-/**
- * Potree Viewer Constants
- */
+import type {
+  PotreeViewerConfig,
+  CesiumConfig,
+  MapProviderConfig,
+  UTMZoneConfig,
+} from "./types";
 
-export const DEFAULT_BASE_PATH = '/potree-static';
+export const BASE_PATH = "/potree-static";
 
-// Scripts (order matters - dependencies first)
-// CRITICAL: Three.js MUST be loaded before potree.js
-export const getScriptPaths = (basePath = DEFAULT_BASE_PATH) => [
-  `${basePath}/lib/jquery/jquery-3.1.1.min.js`,
-  `${basePath}/lib/proj4/proj4.js`,
-  `${basePath}/lib/other/BinaryHeap.js`,
-  `${basePath}/lib/tween/tween.min.js`,
-  `${basePath}/lib/i18next/i18next.js`,
-  `${basePath}/lib/d3/d3.js`,
-  `${basePath}/lib/jstree/jstree.js`,
-  `${basePath}/lib/spectrum/spectrum.js`,
-  `${basePath}/lib/jquery-ui/jquery-ui.min.js`,
-  `${basePath}/lib/three.js/build/three.js`,
-  `${basePath}/build/potree/potree.js`,
-];
+export const CONTAINER_IDS = {
+  renderArea: "potree_render_area",
+  sidebar: "potree_sidebar_container",
+  cesium: (id: string) => `cesium_container_${id}`,
+} as const;
 
-// Stylesheets
-export const getStylesheetPaths = (basePath = DEFAULT_BASE_PATH) => [
-  `${basePath}/build/potree/potree.css`,
-  `${basePath}/lib/jquery-ui/jquery-ui.css`,
-  `${basePath}/lib/spectrum/spectrum.css`,
-  `${basePath}/lib/jstree/themes/mixed/style.css`,
-  `${basePath}/lib/openlayers3/ol.css`,
-];
-
-// Cesium paths
-export const getCesiumScriptPath = (basePath = DEFAULT_BASE_PATH) =>
-  `${basePath}/lib/Cesium/Cesium.js`;
-
-export const getCesiumStylesheetPath = (basePath = DEFAULT_BASE_PATH) =>
-  `${basePath}/lib/Cesium/Widgets/widgets.css`;
-
-export const getCesiumBasePath = (basePath = DEFAULT_BASE_PATH) =>
-  `${basePath}/lib/Cesium`;
-
-// Map providers (free, no API key)
-export const MAP_PROVIDERS = {
-  osm: { name: 'OpenStreetMap', url: 'https://tile.openstreetmap.org/', type: 'osm' as const },
-  esri: { name: 'ESRI Satellite', url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer', type: 'arcgis' as const },
+export const DEFAULT_VIEWER_CONFIG: PotreeViewerConfig = {
+  fov: 60,
+  pointBudget: 1_000_000,
+  edlEnabled: true,
+  edlRadius: 1.4,
+  edlStrength: 0.4,
+  background: null,
+  controls: "orbit",
+  moveSpeed: 1_000,
 };
 
-export type MapProvider = keyof typeof MAP_PROVIDERS;
-
-// Default locations
-export const DEFAULT_LOCATIONS = {
-  sanFrancisco: { lon: -122.4194, lat: 37.7749, height: 50000 },
-  newYork: { lon: -74.006, lat: 40.7128, height: 50000 },
-  tokyo: { lon: 139.6917, lat: 35.6895, height: 50000 },
+export const DEFAULT_CESIUM_CONFIG: CesiumConfig = {
+  enabled: true,
+  zone: "47",
+  offsetZ: 0,
+  mapProvider: "osm",
 };
 
-export type LocationName = keyof typeof DEFAULT_LOCATIONS;
+export const SCRIPTS = {
+  potree: [
+    `${BASE_PATH}/lib/jquery/jquery-3.1.1.min.js`,
+    `${BASE_PATH}/lib/proj4/proj4.js`,
+    `${BASE_PATH}/lib/other/BinaryHeap.js`,
+    `${BASE_PATH}/lib/tween/tween.min.js`,
+    `${BASE_PATH}/lib/i18next/i18next.js`,
+    `${BASE_PATH}/lib/d3/d3.js`,
+    `${BASE_PATH}/lib/jstree/jstree.js`,
+    `${BASE_PATH}/lib/spectrum/spectrum.js`,
+    `${BASE_PATH}/lib/jquery-ui/jquery-ui.min.js`,
+    `${BASE_PATH}/lib/three.js/build/three.js`,
+    `${BASE_PATH}/lib/copc/index.js`,
+    `${BASE_PATH}/build/potree/potree.js`,
+  ],
+  cesium: `${BASE_PATH}/lib/Cesium/Cesium.js`,
+} as const;
+
+export const STYLES = {
+  potree: [
+    `${BASE_PATH}/build/potree/potree.css`,
+    `${BASE_PATH}/lib/jquery-ui/jquery-ui.css`,
+    `${BASE_PATH}/lib/spectrum/spectrum.css`,
+    `${BASE_PATH}/lib/jstree/themes/mixed/style.css`,
+  ],
+  cesium: `${BASE_PATH}/lib/Cesium/Widgets/widgets.css`,
+} as const;
+
+export const CESIUM_BASE_PATH = `${BASE_PATH}/lib/Cesium`;
+
+export const MAP_PROVIDERS: Record<string, MapProviderConfig> = {
+  osm: { type: "osm", url: "https://a.tile.openstreetmap.org/" },
+  esri: {
+    type: "arcgis",
+    url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
+  },
+  "carto-voyager": {
+    type: "url",
+    url: "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+  },
+  "carto-voyager-nolabels": {
+    type: "url",
+    url: "https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
+  },
+  "carto-positron": {
+    type: "url",
+    url: "https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png",
+  },
+  "carto-positron-nolabels": {
+    type: "url",
+    url: "https://basemaps.cartocdn.com/rastertiles/light_nolabels/{z}/{x}/{y}.png",
+  },
+  "carto-dark": {
+    type: "url",
+    url: "https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png",
+  },
+  "carto-dark-nolabels": {
+    type: "url",
+    url: "https://basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}.png",
+  },
+};
+
+export const UTM_ZONES: Record<string, UTMZoneConfig> = {
+  "10": {
+    centralMeridian: -123,
+    proj4: "+proj=utm +zone=10 +datum=WGS84 +units=m +no_defs",
+  },
+  "47": {
+    centralMeridian: 99,
+    proj4: "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs",
+  },
+  "48": {
+    centralMeridian: 105,
+    proj4: "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs",
+  },
+};
+
+export const WGS84 = "+proj=longlat +datum=WGS84 +no_defs";

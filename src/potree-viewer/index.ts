@@ -1,61 +1,34 @@
-/**
- * Potree Viewer - Main exports
- */
+export { PotreeViewer } from "./PotreeViewer";
+export { PotreeProvider, usePotreeStore, usePotreeStoreApi } from "./store";
+export { usePotreeViewer } from "./hooks";
 
-// Main component (recommended)
-export { PotreeViewer } from './components';
-
-// Lower-level components
 export {
-  PotreeLoader,
-  RenderArea,
-  CesiumCanvas,
-  InitialHook,
-  UpdateHook,
-  PotreeViewerSimple,
-  CesiumPotreeViewer,
-} from './components';
-
-// Hooks
-export { usePotreeViewer, usePointCloud, useCesiumPotree } from './hooks';
-
-// Store
-export { PotreeProvider, usePotreeStore, usePotreeStoreApi } from './store';
-
-// Constants
-export {
-  DEFAULT_BASE_PATH,
-  getScriptPaths,
-  getStylesheetPaths,
-  getCesiumScriptPath,
-  getCesiumStylesheetPath,
-  getCesiumBasePath,
-  MAP_PROVIDERS,
-  DEFAULT_LOCATIONS,
-  type MapProvider,
-  type LocationName,
-} from './constants';
-
-// Centralized Config
+  VARIANTS,
+  getVariantConfig,
+  mergeVariantConfig,
+  type PotreeViewerVariant,
+  type VariantConfig,
+} from "./variants";
 export {
   BASE_PATH,
+  CONTAINER_IDS,
   DEFAULT_VIEWER_CONFIG,
   DEFAULT_CESIUM_CONFIG,
-  CONTAINER_IDS,
-  Z_INDEX,
-  PRESETS,
-  mergeViewerConfig,
-  mergeCesiumConfig,
-  isCesiumEnabled,
-} from './potree.config';
-
-// Types
+  SCRIPTS,
+  STYLES,
+  MAP_PROVIDERS,
+  UTM_ZONES,
+  WGS84,
+} from "./constants";
 export type {
-  PotreeViewerConfig,
-  PointCloudConfig,
-  PotreeViewerProps,
-  PotreeStore,
-  CesiumConfig,
   UTMZone,
-  Background,
-} from './types';
+  BackgroundType,
+  ControlType,
+  MapProvider,
+  MapProviderConfig,
+  UTMZoneConfig,
+  PotreeViewerConfig,
+  CesiumConfig,
+  PotreeViewerProps,
+  PotreeStoreState,
+} from "./types";

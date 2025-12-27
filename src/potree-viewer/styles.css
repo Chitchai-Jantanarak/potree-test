@@ -1,0 +1,43 @@
+.potree_sidebar_container img {
+    display: inline-block;
+}
+
+.potree_container .quick_buttons_container {
+    width: 40px !important;
+}
+
+.potree_sidebar_container #potree_languages {
+    display: none;
+}
+
+.potree_render_area > [id^="cesium_container_"] {
+    z-index: 0;
+}
+
+.potree_render_area > canvas {
+    z-index: 1;
+    pointer-events: auto;
+}
+
+.cesium-widget,
+.cesium-viewer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.cesium-widget > canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.cesium-credit-logoContainer,
+.cesium-credit-expand-link,
+.cesium-viewer-bottom {
+    display: none !important;
+}

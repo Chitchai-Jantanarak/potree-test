@@ -1,122 +1,77 @@
-/**
- * Potree Viewer Types
- */
-
 /// <reference path="./globals.d.ts" />
 
-import type { ReactNode, CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from "react";
 
-// UTM Zone types
-export type UTMZone = '47' | '48';
+export type UTMZone = "10" | "47" | "48";
+export type BackgroundType = "skybox" | "gradient" | "black" | "white" | null;
+export type ControlType = "orbit" | "earth" | "fly";
+export type MapProvider =
+  | "osm"
+  | "esri"
+  | "carto-voyager"
+  | "carto-voyager-nolabels"
+  | "carto-positron"
+  | "carto-positron-nolabels"
+  | "carto-dark"
+  | "carto-dark-nolabels";
 
-// Background types
-export type Background = 'skybox' | 'gradient' | 'black' | 'white' | null;
-
-// Point cloud configuration
-export interface PointCloudConfig {
+export interface MapProviderConfig {
+  type: "osm" | "arcgis" | "url";
   url: string;
-  name: string;
-  position?: { x?: number; y?: number; z?: number };
-  rotation?: { x?: number; y?: number; z?: number };
-  scale?: { x?: number; y?: number; z?: number };
-  visible?: boolean;
-  size?: number;
-  sizeType?: 'adaptive' | 'fixed';
-  shape?: 'square' | 'circle';
-  activeAttribute?: 'rgba' | 'elevation' | 'intensity';
 }
 
-// Viewer configuration
+export interface UTMZoneConfig {
+  centralMeridian: number;
+  proj4: string;
+}
+
 export interface PotreeViewerConfig {
-  fov?: number;
-  pointBudget?: number;
-  background?: Background;
-  edlEnabled?: boolean;
-  edlRadius?: number;
-  edlStrength?: number;
-  showGUI?: boolean;
-  showSidebar?: boolean;
-  controls?: 'orbit' | 'earth' | 'fly';
+  fov: number;
+  pointBudget: number;
+  edlEnabled: boolean;
+  edlRadius: number;
+  edlStrength: number;
+  background: BackgroundType;
+  controls: ControlType;
+  moveSpeed: number;
 }
 
-// Cesium configuration
+export interface GeoPosition {
+  longitude: number;
+  latitude: number;
+  height?: number;
+}
+
 export interface CesiumConfig {
-  enabled?: boolean;
-  zone?: UTMZone;
-  offsetZ?: number;
-  mapProvider?: 'osm' | 'esri';
-  initialPosition?: {
-    lon: number;
-    lat: number;
-    height: number;
-  };
+  enabled: boolean;
+  zone: UTMZone;
+  offsetZ: number;
+  mapProvider: MapProvider;
+  position?: GeoPosition;
 }
 
-// Main viewer props
 export interface PotreeViewerProps {
-  // Point cloud URL (single)
-  url?: string;
-
-  // Container ID
+  variant?: string;
   containerId?: string;
-
-  // Viewer config
-  config?: PotreeViewerConfig;
-
-  // Cesium config (pass to enable Cesium)
-  cesium?: CesiumConfig;
-
-  // Point clouds to load
-  pointClouds?: PointCloudConfig[];
-
-  // Sidebar
+  config?: Partial<PotreeViewerConfig>;
+  cesium?: Partial<CesiumConfig>;
   sidebar?: boolean;
-
-  // Auto focus on loaded point clouds
-  autoFocus?: boolean;
-
-  // Styling
   className?: string;
   style?: CSSProperties;
-
-  // Children in render area (overlays on the viewer)
-  renderAreaChildren?: ReactNode;
-
-  // Additional children (sidebar, controls, etc.)
   children?: ReactNode;
-
-  // Callbacks
   onReady?: (viewer: Potree.Viewer, cesiumViewer?: Cesium.Viewer) => void;
-  onPointCloudLoaded?: (name: string, pointcloud: Potree.PointCloudOctree) => void;
   onError?: (error: Error) => void;
 }
 
-// Store state
-export interface PotreeStore {
-  // Viewers
+export interface PotreeStoreState {
   viewer: Potree.Viewer | null;
   cesiumViewer: Cesium.Viewer | null;
-
-  // Loading states
   scriptsLoaded: boolean;
-  isLoading: boolean;
-  error: Error | null;
-
-  // Config
   containerId: string;
-  url: string | null;
   zone: UTMZone;
   offsetZ: number;
-
-  // Actions
+  position: GeoPosition | null;
   setViewer: (viewer: Potree.Viewer | null) => void;
   setCesiumViewer: (viewer: Cesium.Viewer | null) => void;
   setScriptsLoaded: (loaded: boolean) => void;
-  setLoading: (loading: boolean) => void;
-  setError: (error: Error | null) => void;
-  setUrl: (url: string | null) => void;
-  setContainerId: (id: string) => void;
-  setZone: (zone: UTMZone) => void;
-  setOffsetZ: (offset: number) => void;
-  reset: () => void;
 }

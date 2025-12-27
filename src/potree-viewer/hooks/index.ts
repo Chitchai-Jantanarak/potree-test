@@ -1,5 +1,1 @@
-/**
- * Hook exports
- */
-
-export { usePotreeViewer, usePointCloud, useCesiumPotree } from './usePotreeViewer';
+export { usePotreeViewer } from "./usePotreeViewer";
