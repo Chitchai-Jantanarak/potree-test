@@ -67,6 +67,7 @@ export const MAP_PROVIDERS: Record<string, MapProviderConfig> = {
     type: "arcgis",
     url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
   },
+  /* 
   "carto-voyager": {
     type: "url",
     url: "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
@@ -91,6 +92,7 @@ export const MAP_PROVIDERS: Record<string, MapProviderConfig> = {
     type: "url",
     url: "https://basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}.png",
   },
+  */
 };
 
 export const PROJECTIONS: Record<string, ProjectionConfig> = {
